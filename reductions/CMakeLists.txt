@@ -1,0 +1,56 @@
+cmake_minimum_required (VERSION 3.16)
+
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
+
+project(ReduBench CXX)
+
+message(STATUS "Setting policy CMP0074 to use <Package>_ROOT variables")
+cmake_policy(SET CMP0074 NEW)
+
+set(PUBLIC_DEPS)
+
+set(HEADER_DIRS)
+set(SOURCE_DIRS)
+set(SOURCES)
+set(HEADERS)
+list(APPEND HEADER_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/common")
+list(APPEND SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/fib")
+list(APPEND SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/powerset")
+list(APPEND SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/dot")
+list(APPEND SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/powerset-UDR")
+list(APPEND SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/powerset-final")
+
+find_package(OpenMP)
+if(OPENMP_FOUND)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+else()
+message(STATUS "OPENMP SUPPORT NOT FOUND")  
+endif()
+
+foreach(DIR ${SOURCE_DIRS})
+  file(GLOB _HEADERS ${DIR}/*.h)  
+  file(GLOB _SOURCES ${DIR}/*.cpp)
+  list(APPEND HEADERS ${_HEADERS})
+  list(APPEND SOURCES ${_SOURCES})
+endforeach()
+
+if(NOT DEFINED ENV{RED_TYPE_SIZE})
+set(RED_TYPE_SIZE 4)
+message(STATUS "set(RED_TYPE_SIZE 4)")
+endif()
+
+foreach(SRC_FILE ${SOURCES})
+  get_filename_component(SRC_FILE_NAME ${SRC_FILE} NAME)
+  string(REGEX REPLACE "\\.[^.]*$" "" SRC_FILE_NAME ${SRC_FILE_NAME})
+  add_executable(${SRC_FILE_NAME} ${SRC_FILE} ${HEADERS})  
+  target_include_directories(${SRC_FILE_NAME} PRIVATE ${HEADER_DIRS})
+  add_compile_options(-Wall -Wextra -pedantic -Werror -O3)
+  add_compile_options("-DRED_TYPE_SIZE=${RED_TYPE_SIZE}")
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(${SRC_FILE_NAME} PUBLIC "DEBUG")
+    message(STATUS "CMAKE_BUILD_TYPE=DEBUG")  
+  endif()
+endforeach()
+
