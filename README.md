@@ -1,8 +1,8 @@
-# OMP Task Bench (OMP-TB)
+# Parallel Task Bench (PTB)
 
-OMP-TB is a collection of benchmarks to measure tasking performance and tasking-related features in OpenMP.  Currently it includes benchmark as listed below. Benchmarks in the `reductions` sub-directory target task-parallel reduction support. In general, such benchmarks are useful to evaluate compiler language support as well as its efficient implementation. 
+PTB is a collection of benchmarks to measure tasking performance and tasking-related features.  Currently it includes benchmark as listed below. In general, such benchmarks are useful to evaluate compiler language support as well as its efficient implementation. 
 
-## OMP-TB Benchmarks
+## PTB Benchmarks
 - reductions/dot (Dot Product)
 - reductions/fib (Fibonacci)
 - reductions/powerset (Powerset Permutations)
