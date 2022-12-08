@@ -2,13 +2,12 @@
 #include <openmpi/mpiext/mpiext_continue_c.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <qthread/qthread.h>
-#include <qthread/barrier.h>
 
 #include <unistd.h>
 #include <stdarg.h>
 #include <assert.h>
 
+#include <omp.h>
 #include <helpers.h>
 
 #define VALREF 17
