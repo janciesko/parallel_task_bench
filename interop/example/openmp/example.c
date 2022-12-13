@@ -21,11 +21,10 @@ int callback(int rc, void *data) {
 void proc0(void) {
   omp_event_handle_t event;
   int value = 0;
-  volatile int comm_started_flag = 0;
+  static int comm_started_flag = 0;
   MPI_Request cont_req;
 
   MPIX_Continue_init(MPI_UNDEFINED, 0, MPI_INFO_NULL, &cont_req);
- 
   MPI_Start(&cont_req);
 
   #pragma omp task depend(out:value) shared(value, comm_started_flag) detach(event)
@@ -44,7 +43,7 @@ void proc0(void) {
     assert (value == VALREF);
   }
 
-  #pragma omp task
+  #pragma omp task shared(comm_started_flag)
   {
     int flag = 0;
     debug("task2\n");
@@ -87,7 +86,8 @@ int main (int argc , char ** argv) {
       printf("ERROR: Invalid rank: %d", rank);      
       break;
   }
-  
+ 
+  MPI_Barrier(MPI_COMM_WORLD); 
   MPI_Finalize();
   return 0;
 }
