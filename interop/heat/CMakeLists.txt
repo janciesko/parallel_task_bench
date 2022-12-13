@@ -10,7 +10,6 @@ set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 # set the project name
 project(omp-continue-test VERSION 1.0 LANGUAGES C CXX)
 
-option(GDB "start the attach loops so that gdb can be attached to each proc" OFF)
 option(ENABLE_OPENMP "Whether to build implementation using OPENMP" OFF)
 option(ENABLE_ARGOBOTS "Whether to build implementation using ARGOBOTS" OFF)
 option(ENABLE_QTHREADS "Whether to build implementation using QTHREADS" OFF)
@@ -99,10 +98,6 @@ foreach(DIR ${SOURCE_DIRS})
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${TARGET_NAME} PUBLIC "DEBUG=1")
     message(STATUS "CMAKE_BUILD_TYPE=DEBUG")  
-  endif()
-  if (GDB)
-    target_compile_definitions(${TARGET_NAME} PUBLIC "GDB=1")
-    message(STATUS "GDB ATTACH LOOP ENABLED")
   endif()
 endforeach()
 
