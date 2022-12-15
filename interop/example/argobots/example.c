@@ -49,14 +49,15 @@ void task0(void * _args) {
 
 void task1(void *_args) {
   args_t *args = (args_t *) _args;
-  debug("task1\n");
   ABT_eventual_wait(args->val_eventual, NULL);
+  debug("task1\n");
   assert (*args->val == VALREF);
 }
 
 void poll_task(void * _args){
   args_t *args = (args_t *) _args;
   int flag = 0;
+  debug("task2\n");
   do {
     if (args->comm_started_flag) {
       MPI_Test(args->cont_req, &flag, MPI_STATUS_IGNORE);

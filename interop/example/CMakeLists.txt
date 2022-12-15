@@ -10,7 +10,6 @@ set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 # set the project name
 project(omp-continue-test VERSION 1.0 LANGUAGES C CXX)
 
-option(GDB "start the attach loops so that gdb can be attached to each proc" OFF)
 option(ENABLE_OPENMP "Whether to build implementation using OPENMP" OFF)
 option(ENABLE_ARGOBOTS "Whether to build implementation using ARGOBOTS" OFF)
 option(ENABLE_QTHREADS "Whether to build implementation using QTHREADS" OFF)

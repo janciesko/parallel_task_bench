@@ -39,8 +39,8 @@ aligned_t task0(void * _args) {
 
 aligned_t task1(void *_args) {
   args_t *args = (args_t *) _args;
-  debug("task1\n");
   qthread_readFF(NULL, args->val);
+  debug("task1\n");
   assert (*args->val == VALREF);
   qt_barrier_enter(args->barrier);
   return 0;
@@ -49,6 +49,7 @@ aligned_t task1(void *_args) {
 aligned_t poll_task(void * _args){
   args_t *args = (args_t *) _args;
   int flag = 0;
+  debug("task2\n");
   do {
     if (args->comm_started_flag) {
       MPI_Test(args->cont_req, &flag, MPI_STATUS_IGNORE);
@@ -85,7 +86,6 @@ int main (int argc , char ** argv) {
   int size, rank;
   MPI_Init(&argc , &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-
 
   qthread_initialize();
 
