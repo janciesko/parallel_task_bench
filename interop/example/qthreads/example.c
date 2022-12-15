@@ -1,5 +1,5 @@
 #include <mpi.h>
-#include <openmpi/mpiext/mpiext_continue_c.h>
+#include <mpi-ext.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <qthread/qthread.h>

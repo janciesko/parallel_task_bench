@@ -186,16 +186,8 @@ int main(int argc, char *argv[])
     MPI_CHECK(MPI_Comm_size(MPI_COMM_WORLD, &numprocs));
     MPI_CHECK(MPI_Comm_rank(MPI_COMM_WORLD, &myid));
 
-#if USE_NEW_CONT_API
-    MPI_CHECK(MPIX_Continue_init(0, 0, &cont_req, MPI_INFO_NULL));
-#else
-    MPI_CHECK(MPIX_Continue_init(&cont_req, MPI_INFO_NULL));
-    //MPI_CHECK(MPI_Continue_init(&cont_req));
-#endif
-
-#if USE_NEW_CONT_API
+    MPIX_Continue_init(MPI_UNDEFINED, 0, MPI_INFO_NULL, &cont_req);
     MPI_Start(&cont_req);
-#endif // USE_NEW_CONT_API
 
     if (0 == myid) {
         switch (po_ret) {
@@ -316,11 +308,8 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-#if USE_NEW_CONT_API
 static int final_cb(int rc, void *data)
-#else
-static int final_cb(MPI_Status *status, void *data)
-#endif
+
 {
     MPI_Request req;
     thread_tag_t *tag = (thread_tag_t*)data;
@@ -330,31 +319,17 @@ static int final_cb(MPI_Status *status, void *data)
     return MPI_SUCCESS;
 }
 
-#if USE_NEW_CONT_API
 static int receive_thread_recv_cb(int rc, void *data)
-#else
-static int receive_thread_recv_cb(MPI_Status *status, void *data)
-#endif
 {
     MPI_Request req;
     thread_tag_t *tag = (thread_tag_t*)data;
     if(options.sender_thread == 1) {
         tag->tag = 2;
     }
-    //printf("receive_thread_recv_cb\n");
+
     printf("[%d] Pong tag %d size %d thread %d \n", myid, tag->tag, tag->size, omp_get_thread_num());
     MPI_Isend (tag->s_buf, tag->size, MPI_CHAR, 0, tag->tag, MPI_COMM_WORLD, &req);
-#if USE_NEW_CONT_API
     MPI_CHECK(MPIX_Continue(&req, &final_cb, tag, 0, &tag->status, cont_req));
-#else  // MPIX_CONT_REQBUF_VOLATILE
-    MPI_CHECK(MPIX_Continue(&req, &final_cb, tag, &tag->status, cont_req));
-//    int flag;
-//    MPI_CHECK(MPI_Continue(&req, &flag, &receive_thread_recv_cb, tag, &tag->status, cont_req));
-//    if (flag) {
-//        final_cb(MPI_SUCCESS, tag);
-//    }
-#endif // MPIX_CONT_REQBUF_VOLATILE
-
     return MPI_SUCCESS;
 }
 
@@ -438,36 +413,19 @@ void recv_thread() {
             printf("[%d] Ping tag %d size %d thread %d event %p\n", myid, tag->tag, size, omp_get_thread_num(), event);
             MPI_Irecv(tag->r_buf, size, MPI_CHAR, 0, tag->tag, MPI_COMM_WORLD,
                       &req);
-#if USE_NEW_CONT_API
             MPI_CHECK(MPIX_Continue(&req, &receive_thread_recv_cb, tag, MPIX_CONT_REQBUF_VOLATILE, &tag->status, cont_req));
-#else  // MPIX_CONT_REQBUF_VOLATILE
-            MPI_CHECK(MPIX_Continue(&req, &receive_thread_recv_cb, tag, &tag->status, cont_req));
-//            int flag;
-//            MPI_CHECK(MPI_Continue(&req, &flag, &receive_thread_recv_cb, tag, &tag->status, cont_req));
-//            if (flag) {
-//                receive_thread_recv_cb(MPI_SUCCESS, tag);
-//            }
-#endif // MPIX_CONT_REQBUF_VOLATILE
-}
             printf("[%d] TASK tag %d size %d thread %d event %p\n", myid, i, size, omp_get_thread_num(), event);
         }
         // wait for all tasks in this iteration to complete
 #pragma omp taskwait
 
         iter++;
+        }
     }
-
     free_memory(s_buf, r_buf, myid);
-
 }
 
-
-#if USE_NEW_CONT_API
-static int send_thread_send_cb(int rc, void *data)
-#else
-static int send_thread_send_cb(MPI_Status *status, void *data)
-#endif
-{
+static int send_thread_send_cb(int rc, void *data){
     MPI_Request req;
     thread_tag_t *tag = (thread_tag_t*)data;
 
@@ -476,19 +434,9 @@ static int send_thread_send_cb(MPI_Status *status, void *data)
     }
 
     printf("[%d] Pong tag %d size %d thread %d \n", myid, tag->tag, tag->size, omp_get_thread_num());
-
     MPI_CHECK(MPI_Irecv(tag->r_buf, tag->size, MPI_CHAR, 1, tag->tag, MPI_COMM_WORLD,
               &req));
-#if USE_NEW_CONT_API
     MPI_CHECK(MPIX_Continue(&req, &final_cb, tag, MPIX_CONT_REQBUF_VOLATILE, &tag->status, cont_req));
-#else  // MPIX_CONT_REQBUF_VOLATILE
-    MPI_CHECK(MPIX_Continue(&req, &final_cb, tag, &tag->status, cont_req));
-//    int flag;
-//    MPI_CHECK(MPI_Continue(&req, &flag, &final_cb, tag, &tag->status, cont_req));
-//    if (flag) {
-//        final_cb(MPI_SUCCESS, tag);
-//    }
-#endif // MPIX_CONT_REQBUF_VOLATILE
     return MPI_SUCCESS;
 }
 
@@ -579,16 +527,8 @@ void send_thread() {
             MPI_Request req;
             printf("[%d] Ping tag %d size %d thread %d event %p\n", myid, tag->tag, size, omp_get_thread_num(), event);
             MPI_CHECK(MPI_Isend(s_buf, size, MPI_CHAR, 1, tag->tag, MPI_COMM_WORLD, &req));
-#if USE_NEW_CONT_API
             MPI_CHECK(MPIX_Continue(&req, &send_thread_send_cb, tag, MPIX_CONT_REQBUF_VOLATILE, &tag->status, cont_req));
-#else  // MPIX_CONT_REQBUF_VOLATILE
-            MPI_CHECK(MPIX_Continue(&req, &send_thread_send_cb, tag, &tag->status, cont_req));
-//            int flag;
-//            MPI_CHECK(MPI_Continue(&req, &flag, &send_thread_send_cb, tag, &tag->status, cont_req));
-//            if (flag) {
-//                send_thread_send_cb(MPI_SUCCESS, tag);
-//            }
-#endif // MPIX_CONT_REQBUF_VOLATILE
+
 }
             printf("[%d] TASK tag %d size %d thread %d event %p\n", myid, i, size, omp_get_thread_num(), event);
         }

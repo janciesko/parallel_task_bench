@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <chrono>
 
 #include <mpi.h>
 #include <mpi-ext.h>
@@ -11,13 +12,14 @@
 #include <helpers.h>
 #include <heat.hpp>
 
-static MPI_Request cont_req;
+MPI_Request cont_req;
 
 int serial;
 
-void release_event(MPI_Status *status, void *data) {
+int release_event(int rc, void *data) {
   omp_event_handle_t event = (omp_event_handle_t)(uintptr_t) data;
   omp_fulfill_event(event);
+  return MPI_SUCCESS;
 }
 
 inline void solveBlock(block_t *matrix, int nbx, int nby, int bx, int by) {
@@ -46,8 +48,7 @@ inline void solveBlock(block_t *matrix, int nbx, int nby, int bx, int by) {
 }
 
 // TODO: Remove the serialization of communication tasks
-inline void sendFirstComputeRow(block_t *matrix, int nbx, int nby, int rank, int rank_size)
-{
+inline void sendFirstComputeRow(block_t *matrix, int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {
     omp_event_handle_t event;
 		#pragma omp task depend(in: matrix[nby + by]) detach(event) // depend(inout: serial)
@@ -59,13 +60,12 @@ inline void sendFirstComputeRow(block_t *matrix, int nbx, int nby, int rank, int
 			MPI_Isend(&matrix[nby+by][0], BSY, MPI_DOUBLE, rank - 1, by, MPI_COMM_WORLD, &request);
 			// TODO: Bind the completion of the task to the finalization of the MPI request (TAMPI_Iwait)
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
-            MPIX_Continue(&request, &release_event, (void *) event, MPI_STATUS_IGNORE, cont_req);
+			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
 		}
 	}
 }
 
-inline void sendLastComputeRow(block_t *matrix, int nbx, int nby, int rank, int rank_size)
-{
+inline void sendLastComputeRow(block_t *matrix, int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {
     omp_event_handle_t event;
 		#pragma omp task depend(in: matrix[(nbx-2)*nby + by]) detach(event) // depend(inout: serial)
@@ -76,14 +76,13 @@ inline void sendLastComputeRow(block_t *matrix, int nbx, int nby, int rank, int 
 			debug("Sending last compute row to %d tag %d\n", rank+1, by);
 			MPI_Isend(&matrix[(nbx-2)*nby + by][BSX-1], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
-            MPIX_Continue(&request, &release_event, (void *) event, MPI_STATUS_IGNORE, cont_req);
+			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
 		}
 	}
 
 }
 
-inline void receiveUpperBorder(block_t *matrix, int nbx, int nby, int rank, int rank_size)
-{
+inline void receiveUpperBorder(block_t *matrix, int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {
     omp_event_handle_t event;
 		#pragma omp task depend(out: matrix[by]) detach(event) // depend(inout: serial)
@@ -94,13 +93,12 @@ inline void receiveUpperBorder(block_t *matrix, int nbx, int nby, int rank, int 
 			debug("Receiving upper border from %d tag %d\n", rank-1, by);
 			MPI_Irecv(&matrix[by][BSX-1], BSY, MPI_DOUBLE, rank - 1, by, MPI_COMM_WORLD, &request);
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
-            MPIX_Continue(&request, &release_event, (void *) event, MPI_STATUS_IGNORE, cont_req);
+			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
 		}
 	}
 }
 
-inline void receiveLowerBorder(block_t *matrix, int nbx, int nby, int rank, int rank_size)
-{
+inline void receiveLowerBorder(block_t *matrix, int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {
     omp_event_handle_t event;
 		#pragma omp task depend(out: matrix[(nbx-1)*nby + by]) depend(inout: serial) detach(event)
@@ -111,13 +109,12 @@ inline void receiveLowerBorder(block_t *matrix, int nbx, int nby, int rank, int 
 			debug("Receiving lower border from %d tag %d\n", rank+1, by);
 			MPI_Irecv(&matrix[(nbx-1)*nby + by][0], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
-           MPIX_Continue(&request, &release_event, (void *) event, MPI_STATUS_IGNORE, cont_req);
+		    MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
 		}
 	}
 }
 
-inline void solveGaussSeidel(block_t *matrix, int nbx, int nby, int rank, int rank_size)
-{
+inline void solveGaussSeidel(block_t *matrix, int nbx, int nby, int rank, int rank_size) {	
 	if (rank != 0) {
 		sendFirstComputeRow(matrix, nbx, nby, rank, rank_size);
 		receiveUpperBorder(matrix, nbx, nby, rank, rank_size);
@@ -135,7 +132,10 @@ inline void solveGaussSeidel(block_t *matrix, int nbx, int nby, int rank, int ra
 					depend(in: matrix[bx*nby + by-1])   \
 					depend(in: matrix[bx*nby + by+1])   \
 					depend(inout: matrix[bx*nby + by])
-			solveBlock(matrix, nbx, nby, bx, by);
+			{
+				debug("solveblock %i, %i, %i, %i\n", bx, by, nbx, nby);
+				solveBlock(matrix, nbx, nby, bx, by);
+			}
 		}
 	}
 
@@ -144,18 +144,19 @@ inline void solveGaussSeidel(block_t *matrix, int nbx, int nby, int rank, int ra
 	}
 }
 
-double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps)
-{
+double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps) {
 	int rank, rank_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
-	MPIX_Continue_init(&cont_req, MPI_INFO_NULL);
+	MPIX_Continue_init(MPI_UNDEFINED, 0, MPI_INFO_NULL, &cont_req);
+	MPI_Start(&cont_req);
 
     volatile int do_progress = 1; // whether to keep triggering progress
     volatile int in_compute  = 0; // whether the compute task has been launched
 
 	#pragma omp parallel
 	{
+	  #pragma omp single nowait
       #pragma omp task shared(do_progress, in_compute) untied
       {
         constexpr const auto poll_interval = std::chrono::microseconds{1};
@@ -166,7 +167,6 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps)
           auto ts = clock::now();
           if (poll_interval < ts - last_progress_ts)
           {
-            //std::cout << "Calling MPI poll service " << std::endl;
 		    int flag;
 	        MPI_Test(&cont_req, &flag, MPI_STATUS_IGNORE);
             last_progress_ts = clock::now();
@@ -180,27 +180,25 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps)
         }
       }
 	  #pragma omp single
-      {
-
-        #pragma omp task default(shared)
-        {
-          in_compute = 1; // signal that the progress task can start yielding without risking to take away this task
- 	 	  for (int t = 0; t < timesteps; ++t) {
-		  	solveGaussSeidel(matrix, rowBlocks, colBlocks, rank, rank_size);
-		  }
-          // wait for all tasks created inside this task
-          #pragma omp taskwait
-          // signal that the progress task can stop working
-          do_progress = 0;
-        }
-      }
+	  #pragma omp task default(shared)
+	  {
+		in_compute = 1; // signal that the progress task can start yielding without risking to take away this task
+		for (int t = 0; t < timesteps; ++t) {
+		solveGaussSeidel(matrix, rowBlocks, colBlocks, rank, rank_size);
+		}
+		// wait for all tasks created inside this task
+		#pragma omp taskwait
+		// signal that the progress task can stop working
+		do_progress = 0;
+	  }
       // wait for the progress task to complete
 	  #pragma omp taskwait
 	}
+
+	MPI_Request_free (&cont_req);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Request_free(&cont_req);
 
 	return 0.0;
 }
-
