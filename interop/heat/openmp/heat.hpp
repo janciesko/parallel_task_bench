@@ -3,7 +3,8 @@
 
 #include <string>
 
-#include "matrix.hpp"
+#include <helpers.h>
+#include <matrix.hpp>
 
 template<class T = int>
 inline T round(T a, T b)

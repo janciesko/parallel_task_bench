@@ -1,10 +1,11 @@
-#include "heat.hpp"
-
 #include <cassert>
 #include <cstdlib>
 
 #include <mpi.h>
 #include <omp.h>
+
+#include <heat.hpp>
+
 
 void generateImage(const HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlocksPerRank);
 
@@ -42,6 +43,8 @@ int main(int argc, char **argv)
 	double start = get_time();
 	solve(conf.matrix, rowBlocksPerRank, colBlocks, conf.timesteps);
 	double end = get_time();
+
+	debug("DoneInMain\n");
 	
 	if (!rank) {
 		long totalElements = (long)conf.rows * (long)conf.cols;

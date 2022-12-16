@@ -9,8 +9,8 @@
 #include <iostream>
 #include <sys/time.h>
 
-#include "matrix.hpp"
-#include "heat.hpp"
+#include <matrix.hpp>
+#include <heat.hpp>
 
 int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlockOffset)
 {
