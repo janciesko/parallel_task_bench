@@ -124,7 +124,7 @@ inline void sendLastComputeRow(block_t *matrix, task_arg_t * _args, int nbx, int
 		task_arg_t &args = _args[(nbx-2)*nby + by];
 		args.by=by;
 		args.rank = rank;
-		args.matrix = matrix[(nbx-2)*nby + by];
+		args.matrix = &matrix[(nbx-2)*nby + by];
 		qthread_fork((aligned_t(*)(void*))&sendLastComputeRow_task, (void *) &args, NULL);
 	}
 }
@@ -147,7 +147,7 @@ inline void receiveUpperBorder(block_t *matrix, task_arg_t * _args, int nbx, int
 		task_arg_t &args = _args[by];
 		args.by=by;
 		args.rank = rank;
-		args.matrix = matrix[by];
+		args.matrix = &matrix[by];
 		qthread_fork((aligned_t(*)(void*))&receiveUpperBorder_task, (void *) &args, NULL);
 	}
 }
@@ -170,7 +170,7 @@ inline void receiveLowerBorder(block_t *matrix, task_arg_t * _args,  int nbx, in
 		task_arg_t &args = _args[(nbx-1)*nby + by];
 		args.by=by;
 		args.rank = rank;
-		args.matrix = matrix[(nbx-1)*nby + by];
+		args.matrix = &matrix[(nbx-1)*nby + by];
 		qthread_fork((aligned_t(*)(void*))&receiveLowerBorder_task, (void *) &args, NULL);
 	}
 }
@@ -187,27 +187,28 @@ inline void solveGaussSeidel(block_t *matrix, task_arg_t * args, int nbx, int nb
 
 	for (int bx = 1; bx < nbx-1; ++bx) {
 		for (int by = 1; by < nby-1; ++by) {
-			solveBlock(matrix, args, nbx, nby, bx, by, barrier1);
+			solveBlock(matrix, args, nbx, nby, bx, by);
 		}
 	}
 
 	qt_barrier_enter(barrier1);
 
 	if (rank != rank_size - 1) {
-		sendLastComputeRow(matrix, args, nbx, nby, rank, rank_size, barrier2);
+		sendLastComputeRow(matrix, args, nbx, nby, rank, rank_size);
 	}	
 
 	qt_barrier_enter(barrier2);
 
 }
 
-aligned_t progress_task(void * void)
+aligned_t progress_task(void * args)
 {
 	int flag = 0;
 	  while(do_progress) { 
 	        MPI_Test(&cont_req, &flag, MPI_STATUS_IGNORE);
         	qthread_yield();        
       }
+	return 0;
 }
 
 double solve(block_t *matrix, task_arg_t * args, int rowBlocks, int colBlocks, int timesteps) {
@@ -217,8 +218,8 @@ double solve(block_t *matrix, task_arg_t * args, int rowBlocks, int colBlocks, i
 	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
 	MPIX_Continue_init(MPI_UNDEFINED, 0, MPI_INFO_NULL, &cont_req);
 	MPI_Start(&cont_req);
-	barrier1 = qt_barrier_create((nbx-2)*(nby*2), REGION_BARRIER)
-	barrier2 = qt_barrier_create(nby-2, REGION_BARRIER)
+	barrier1 = qt_barrier_create((rowBlocks-2)*(colBlocks*2), REGION_BARRIER);
+	barrier2 = qt_barrier_create(colBlocks-2, REGION_BARRIER);
 
 	QCHECK(qthread_fork(progress_task, &ret, NULL));
 
