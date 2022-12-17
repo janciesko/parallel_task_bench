@@ -73,8 +73,9 @@ void proc0(void) {
   qthread_fork(&task0, (void *) &args, NULL);
   qthread_fork(&task1, (void *) &args, NULL);
   qthread_fork(&poll_task, (void *) &args, NULL);
-  qt_barrier_enter(args.barrier);
+  qt_barrier_enter_id(args->barrier, 0);
   MPI_Request_free (&cont_req);
+  qt_barrier_destroy(args->barrier);
 }
 
 void proc1(void) {
