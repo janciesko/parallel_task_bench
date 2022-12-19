@@ -206,6 +206,9 @@ aligned_t progress_task(void * args)
 	int flag = 0;
 	  while(do_progress) { 
 	        MPI_Test(&cont_req, &flag, MPI_STATUS_IGNORE);
+            if (flag) {
+              MPI_Start(&cont_req);
+            }
         	qthread_yield();        
       }
 	return 0;
