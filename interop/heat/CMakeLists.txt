@@ -22,7 +22,7 @@ if (NOT MPI_FOUND)
 endif (NOT MPI_FOUND)
 
 set(CONT_SEARCH_DIRS)
-foreach(DIR ${MPI_INCLUDE_PATH})
+foreach(DIR ${MPI_CXX_INCLUDE_DIRS})
   list(APPEND CONT_SEARCH_DIRS "${DIR}/openmpi/mpiext")
 endforeach()
 
@@ -33,16 +33,7 @@ endif(NOT CONTINUATIONS_FOUND)
 
 if(ENABLE_OPENMP)
   set(BACKEND_NAME "OpenMP")
-
-  find_package(OpenMP ${OMP_MIN_VERSION})
-  if(OPENMP_FOUND)
-   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-  else()
-   message(SEND_ERROR "OPENMP SUPPORT NOT FOUND")
-  endif()
-
+  find_package(OpenMP ${OMP_MIN_VERSION} REQUIRED)
 endif()
 
 if(ENABLE_ARGOBOTS)
@@ -80,20 +71,25 @@ foreach(DIR ${SOURCE_DIRS})
   message(STATUS "DIR: ${DIR}")
   message(STATUS "TARGET_NAME: " ${TARGET_NAME})
 
-  add_executable(${TARGET_NAME} ${SUBDIR_SOURCES} ${SUBDIR_SOURCES})
+  add_executable(${TARGET_NAME} ${SUBDIR_SOURCES} ${SUBDIR_HEADERS})
   target_include_directories(${TARGET_NAME} PRIVATE ${DIR})
   target_include_directories(${TARGET_NAME} PRIVATE ${HEADER_DIRS})
   add_compile_options(-Wall -Wextra -pedantic -O3)
 
   if(ENABLE_ARGOBOTS)
      target_include_directories(${TARGET_NAME} PRIVATE ${ABT_INCLUDE_PATH})
-     target_link_libraries(${TARGET_NAME} ${ABT_LINK_LIBRARIES})
+     target_link_libraries(${TARGET_NAME} ${ABT_LINK_LIBRARIES} MPI::MPI_CXX)
   endif()
 
   if(ENABLE_QTHREADS)
     target_include_directories(${TARGET_NAME} PRIVATE ${QT_INCLUDE_PATH})
-    target_link_libraries(${TARGET_NAME} ${QT_LINK_LIBRARIES})    
+    target_link_libraries(${TARGET_NAME} ${QT_LINK_LIBRARIES} PUBLIC MPI::MPI_CXX)
   endif()
+
+  if(ENABLE_OPENMP)
+     target_link_libraries(${TARGET_NAME} PUBLIC OpenMP::OpenMP_CXX MPI::MPI_CXX)
+  endif()
+
 
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${TARGET_NAME} PUBLIC "DEBUG=1")
