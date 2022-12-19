@@ -59,7 +59,7 @@ inline void sendFirstComputeRow(block_t *matrix, int nbx, int nby, int rank, int
 			MPI_Isend(&matrix[nby+by][0], BSY, MPI_DOUBLE, rank - 1, by, MPI_COMM_WORLD, &request);
 			// TODO: Bind the completion of the task to the finalization of the MPI request (TAMPI_Iwait)
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
-			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
+			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 		}
 	}
 }
@@ -74,7 +74,7 @@ inline void sendLastComputeRow(block_t *matrix, int nbx, int nby, int rank, int 
 			debug("Sending last compute row to %d tag %d\n", rank+1, by);
 			MPI_Isend(&matrix[(nbx-2)*nby + by][BSX-1], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
-			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
+			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 		}
 	}
 
@@ -90,7 +90,7 @@ inline void receiveUpperBorder(block_t *matrix, int nbx, int nby, int rank, int 
 			debug("Receiving upper border from %d tag %d\n", rank-1, by);
 			MPI_Irecv(&matrix[by][BSX-1], BSY, MPI_DOUBLE, rank - 1, by, MPI_COMM_WORLD, &request);
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
-			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
+			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 		}
 	}
 }
@@ -105,7 +105,7 @@ inline void receiveLowerBorder(block_t *matrix, int nbx, int nby, int rank, int 
 			debug("Receiving lower border from %d tag %d\n", rank+1, by);
 			MPI_Irecv(&matrix[(nbx-1)*nby + by][0], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
-		    MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
+		    MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 		}
 	}
 }
@@ -149,7 +149,7 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps) {
 	int rank, rank_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
-	MPIX_Continue_init(MPI_UNDEFINED, 0, MPI_INFO_NULL, &cont_req);
+	MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
 	MPI_Start(&cont_req);
 
     static volatile int do_progress = 1; // whether to keep triggering progress
