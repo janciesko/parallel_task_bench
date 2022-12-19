@@ -112,7 +112,7 @@ aligned_t sendLastComputeRow_task(task_arg_t * args) {
 	block_t * matrix = args->matrix;
 
 	MPI_Request request;
-	debug("Sending last compute row to %d tag %d\n", rank-1, by);
+	debug("Sending last compute row to %d tag %d\n", rank+1, by);
 	MPI_Isend(&matrix[BSX-1], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
 	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
 	qt_barrier_enter(barrier2);
@@ -159,7 +159,7 @@ aligned_t receiveLowerBorder_task(task_arg_t * args) {
 	block_t * matrix = args->matrix;
 
 	MPI_Request request;
-	debug("Receiving lower border from %d tag %d\n", rank-1, by);
+	debug("Receiving lower border from %d tag %d\n", rank+1, by);
 	MPI_Irecv(&matrix[0], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
 	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
 	return 0;
