@@ -27,6 +27,7 @@ foreach(DIR ${MPI_CXX_INCLUDE_DIRS})
 endforeach()
 
 find_path(CONTINUATIONS_FOUND "mpiext_continue_c.h" PATHS ${CONT_SEARCH_DIRS})
+message (STATUS ${CONT_SEARCH_DIRS})
 if (NOT CONTINUATIONS_FOUND)
   message(SEND_ERROR "A build of MPI supporting the continuations feature is required to build continue-basic")
 endif(NOT CONTINUATIONS_FOUND)
@@ -78,12 +79,12 @@ foreach(DIR ${SOURCE_DIRS})
 
   if(ENABLE_ARGOBOTS)
      target_include_directories(${TARGET_NAME} PRIVATE ${ABT_INCLUDE_PATH})
-     target_link_libraries(${TARGET_NAME} ${ABT_LINK_LIBRARIES} MPI::MPI_CXX)
+     target_link_libraries(${TARGET_NAME} PUBLIC ${ABT_LINK_LIBRARIES} MPI::MPI_CXX)
   endif()
 
   if(ENABLE_QTHREADS)
     target_include_directories(${TARGET_NAME} PRIVATE ${QT_INCLUDE_PATH})
-    target_link_libraries(${TARGET_NAME} ${QT_LINK_LIBRARIES} PUBLIC MPI::MPI_CXX)
+    target_link_libraries(${TARGET_NAME} PUBLIC ${QT_LINK_LIBRARIES} MPI::MPI_CXX)
   endif()
 
   if(ENABLE_OPENMP)
