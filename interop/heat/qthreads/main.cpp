@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 
 	int rank, rank_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
+	MPI_Comm_size(MPI_COMM_WORLD, &rank_size); 
 	
 	HeatConfiguration conf = readConfiguration(argc, argv);
 	refineConfiguration(conf, rank_size * BSX, BSY);
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 		double performance = totalElements * (long)conf.timesteps;
 		performance = performance / (end - start);
 		performance = performance / 1000000.0;
-		int threads = omp_get_max_threads();
+		int threads = qthread_num_workers();
 		
 		fprintf(stdout, "rows, %d, cols, %d, rows_per_rank, %d, total, %ld, total_per_rank, %ld, bs, %d"
 				", ranks, %d, threads, %d, timesteps, %d, time, %f, performance, %f\n",
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 	err = finalize(conf);
 	assert(!err);
 	
-	QCHECK(qthread_finalize());
+	qthread_finalize();
 	MPI_Finalize();
 	
 	return 0;

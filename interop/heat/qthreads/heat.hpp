@@ -66,6 +66,6 @@ void printConfiguration(const HeatConfiguration &conf);
 void initializeMatrix(const HeatConfiguration &conf, block_t *matrix, int rowBlocks, int colBlocks, int rowBlockOffset = 0);
 double get_time();
 
-double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps);
+double solve(block_t *matrix, task_arg_t * args, int rowBlocks, int colBlocks, int timesteps);
 
 #endif // HEAT_HPP

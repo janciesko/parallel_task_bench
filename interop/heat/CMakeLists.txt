@@ -22,7 +22,7 @@ if (NOT MPI_FOUND)
 endif (NOT MPI_FOUND)
 
 set(CONT_SEARCH_DIRS)
-foreach(DIR ${MPI_CXX_INCLUDE_DIRS})
+foreach(DIR ${MPI_2_CXX_INCLUDE_DIRS})
   list(APPEND CONT_SEARCH_DIRS "${DIR}/openmpi/mpiext")
 endforeach()
 

@@ -76,7 +76,7 @@ inline void solveBlock(block_t *matrix, task_arg_t * _args, int nbx, int nby, in
 }
 
 int release_event(int rc, void *data) {
-  qthread_writeF(data);
+  qthread_writeEF((aligned_t*)data, (aligned_t*)data);
   return MPI_SUCCESS;
 }
 
@@ -175,30 +175,37 @@ inline void receiveLowerBorder(block_t *matrix, task_arg_t * _args,  int nbx, in
 	}
 }
 
+inline void resetFEBs( block_t * matrix, int nbx, int nby )
+{
+	for (int bx = 0; bx < nbx; ++bx) {
+		for (int by = 0; by < nby; ++by) {
+			qthread_empty((aligned_t*)matrix[bx*nby + by]);
+		}
+	}
+}
+
+
 inline void solveGaussSeidel(block_t *matrix, task_arg_t * args, int nbx, int nby, int rank, int rank_size) {	
 	if (rank != 0) {
 		sendFirstComputeRow(matrix, args, nbx, nby, rank, rank_size);
 		receiveUpperBorder(matrix, args,  nbx, nby, rank, rank_size);
 	}
-
 	if (rank != rank_size - 1) {
 		receiveLowerBorder(matrix, args, nbx, nby, rank, rank_size);
 	}
-
 	for (int bx = 1; bx < nbx-1; ++bx) {
 		for (int by = 1; by < nby-1; ++by) {
 			solveBlock(matrix, args, nbx, nby, bx, by);
 		}
 	}
-
 	qt_barrier_enter(barrier1);
 
 	if (rank != rank_size - 1) {
 		sendLastComputeRow(matrix, args, nbx, nby, rank, rank_size);
 	}	
-
+	resetFEBs(matrix, nbx, nby);
 	qt_barrier_enter(barrier2);
-
+	resetFEBs(matrix, nbx, nby);
 }
 
 aligned_t progress_task(void * args)
