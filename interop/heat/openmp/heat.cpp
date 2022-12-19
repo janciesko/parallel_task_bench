@@ -170,6 +170,10 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps) {
           {
 		    int flag;
 	        MPI_Test(&cont_req, &flag, MPI_STATUS_IGNORE);
+            if (flag) {
+              // re-enable execution of continuations
+              MPI_Start(&cont_req);
+            }
             last_progress_ts = clock::now();
           }
           // it is not safe to yield before compute has started because the thread might steal the compute task

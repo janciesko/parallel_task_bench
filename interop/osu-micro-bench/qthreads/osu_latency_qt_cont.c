@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
     err = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 
     MPIX_Continue_init(&cont_req, MPI_INFO_NULL);
+    MPI_Start(&cont_req);
 
     //abt ABT_init(argc, argv);
     if(options.sender_sheps!=-1) {
@@ -550,6 +551,9 @@ aligned_t cont_progress(void* data)
         //do {
         //completed = 0;
         MPI_Test(&cont_req, &flag, MPI_STATUS_IGNORE);
+        if (flag) {
+          MPI_Start(&cont_req);
+        }
         //} while (completed > 0);
         //abt ABT_thread_yield();
         qthread_yield();
