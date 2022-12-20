@@ -36,7 +36,7 @@ aligned_t solveBlock_task(task_arg_t * args) {
 	const block_t &rightBlock  = matrix[RIGHT];
 	const block_t &bottomBlock = matrix[BOTTOM];
 
-	debug("solveblock %i, %i, %i, %i\n", bx, by, nbx, nby);	
+	debug("solveblock %i, %i, %i, %i, adr %p, %p, %p, %p\n", bx, by, nbx, nby, &targetBlock, topBlock, bottomBlock, leftBlock, rightBlock);	
 
 	double sum = 0.0;
 	for (int x = 0; x < BSX; ++x) {
@@ -66,7 +66,7 @@ inline void solveBlock(block_t *matrix, task_arg_t * _args, int nbx, int nby, in
 	args.matrix = matrix;
 
 	qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, (void *) &args, 
-		(aligned_t*)&matrix[CENTER],
+		NULL,
 		4,
 		(aligned_t*)&matrix[TOP],
 		(aligned_t*)&matrix[BOTTOM],
@@ -76,6 +76,7 @@ inline void solveBlock(block_t *matrix, task_arg_t * _args, int nbx, int nby, in
 }
 
 int release_event(int rc, void *data) {
+  debug("*** Released: %p\n", (aligned_t *)data);
   qthread_writeEF((aligned_t*)data, (aligned_t*)data);
   return MPI_SUCCESS;
 }
@@ -89,7 +90,7 @@ aligned_t sendFirstComputeRow_task(task_arg_t * _args) {
 	MPI_Request request;
 	debug("Sending first compute row to %d tag %d\n", rank-1, by);
 	MPI_Isend(&matrix[0], BSY, MPI_DOUBLE, rank - 1, by, MPI_COMM_WORLD, &request);
-	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
+	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 	return 0;
 }
 
@@ -114,7 +115,7 @@ aligned_t sendLastComputeRow_task(task_arg_t * args) {
 	MPI_Request request;
 	debug("Sending last compute row to %d tag %d\n", rank+1, by);
 	MPI_Isend(&matrix[BSX-1], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
-	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
+	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);	
 	qt_barrier_enter(barrier2);
 	return 0;
 }
@@ -138,7 +139,7 @@ aligned_t receiveUpperBorder_task(task_arg_t * args) {
 	MPI_Request request;
 	debug("Receiving upper border from %d tag %d\n", rank-1, by);
 	MPI_Irecv(&matrix[by][BSX-1], BSY, MPI_DOUBLE, rank - 1, by, MPI_COMM_WORLD, &request);
-	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
+	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 	return 0;
 }
 
@@ -159,9 +160,9 @@ aligned_t receiveLowerBorder_task(task_arg_t * args) {
 	block_t * matrix = args->matrix;
 
 	MPI_Request request;
-	debug("Receiving lower border from %d tag %d\n", rank+1, by);
+	debug("Receiving lower border from %d tag %d adr %p\n", rank+1, by, matrix);
 	MPI_Irecv(&matrix[0], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
-	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_PERSISTENT, MPI_STATUS_IGNORE, cont_req);
+	MPIX_Continue(&request, &release_event, (void *) matrix, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 	return 0;
 }
 
@@ -184,8 +185,8 @@ inline void resetFEBs( block_t * matrix, int nbx, int nby )
 	}
 }
 
-
 inline void solveGaussSeidel(block_t *matrix, task_arg_t * args, int nbx, int nby, int rank, int rank_size) {	
+	resetFEBs(matrix, nbx, nby);
 	if (rank != 0) {
 		sendFirstComputeRow(matrix, args, nbx, nby, rank, rank_size);
 		receiveUpperBorder(matrix, args,  nbx, nby, rank, rank_size);
@@ -198,14 +199,20 @@ inline void solveGaussSeidel(block_t *matrix, task_arg_t * args, int nbx, int nb
 			solveBlock(matrix, args, nbx, nby, bx, by);
 		}
 	}
+	debug("PRE_BARRIER 1\n");
 	qt_barrier_enter(barrier1);
+	debug("POST_BARRIER 1\n");
 
 	if (rank != rank_size - 1) {
 		sendLastComputeRow(matrix, args, nbx, nby, rank, rank_size);
 	}	
+
 	resetFEBs(matrix, nbx, nby);
+	debug("PRE_BARRIER 2\n");
 	qt_barrier_enter(barrier2);
+	debug("POST_BARRIER 2\n");
 	resetFEBs(matrix, nbx, nby);
+
 }
 
 aligned_t progress_task(void * args)
@@ -214,7 +221,7 @@ aligned_t progress_task(void * args)
 	  while(do_progress) { 
 	        MPI_Test(&cont_req, &flag, MPI_STATUS_IGNORE);
             if (flag) {
-              MPI_Start(&cont_req);
+           		MPI_Start(&cont_req);
             }
         	qthread_yield();        
       }
@@ -228,16 +235,18 @@ double solve(block_t *matrix, task_arg_t * args, int rowBlocks, int colBlocks, i
 	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
 	MPIX_Continue_init(MPI_UNDEFINED, 0, MPI_INFO_NULL, &cont_req);
 	MPI_Start(&cont_req);
-	barrier1 = qt_barrier_create((rowBlocks-2)*(colBlocks*2), REGION_BARRIER);
-	barrier2 = qt_barrier_create(colBlocks-2, REGION_BARRIER);
+	barrier1 = qt_barrier_create((rowBlocks-2)*(colBlocks-2)+1, REGION_BARRIER);
+	barrier2 = qt_barrier_create(colBlocks-2+1, REGION_BARRIER);
 
-	QCHECK(qthread_fork(progress_task, &ret, NULL));
+	QCHECK(qthread_fork(progress_task, NULL, &ret));
 
     do_progress = 1; // whether to keep triggering progress
   
 	for (int t = 0; t < timesteps; ++t) {
 		solveGaussSeidel(matrix, args, rowBlocks, colBlocks, rank, rank_size);
 	}
+
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	do_progress = 0;
 
