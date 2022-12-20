@@ -15,10 +15,10 @@
 int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlockOffset)
 {
 	conf.matrix      = (block_t *)    malloc(rowBlocks * colBlocks * sizeof(block_t));
+	conf.matrix_dep  = (aligned_t *)  malloc(rowBlocks * colBlocks * sizeof(aligned_t));
 	conf.args        = (task_arg_t *) malloc((rowBlocks-2) * (colBlocks-2) * sizeof(task_arg_t));
 	conf.args_border = (task_arg_t *) malloc(4 * colBlocks * sizeof(task_arg_t));
-	conf.matrix_dep  = (aligned_t *)  malloc((rowBlocks-2) * (colBlocks-2) * sizeof(aligned_t));
-
+	
 	if (conf.matrix == NULL) {
 		fprintf(stderr, "Error: Memory cannot be allocated!\n");
 		exit(1);

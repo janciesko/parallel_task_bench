@@ -11,6 +11,7 @@
 #include <heat.hpp>
 
 enum direction {NORTH, SOUTH, REGULAR};
+enum rankName {FIRST, LAST, MIDDLE};
 
 MPI_Request cont_req;
 volatile int do_progress;
@@ -52,7 +53,6 @@ aligned_t solveBlock_task(task_arg_t * args) {
 			targetBlock[x][y] = value;
 		}
 	}
-	qt_barrier_enter(barrier1);
 	return 0;
 }
 
@@ -91,7 +91,8 @@ inline void solveBlock(block_t *matrix, aligned_t * matrix_dep, task_arg_t * _ar
 			break;
 		}
 		case (REGULAR):
-			{debug("solveblock_R %i, %i, %i, %i, adr %p, %p, %p, %p\n", bx, by, nbx, nby, &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
+		{
+			debug("solveblock_R %i, %i, %i, %i, adr %p, %p, %p, %p\n", bx, by, nbx, nby, &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
 			qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, (void *) &args, 
 				(aligned_t*)matrix_dep[CENTER],
 				2,
@@ -104,7 +105,6 @@ inline void solveBlock(block_t *matrix, aligned_t * matrix_dep, task_arg_t * _ar
 		{
 			debug("ERROR: Unexpected block.\n");	
 			exit(1);
-			break;	
 		}
 	}
 }
@@ -142,7 +142,6 @@ inline void sendFirstComputeRow(block_t *matrix, task_arg_t * _args, int nbx, in
 		args.rank = rank;
 		args.rank_size = rank_size;
 		args.matrix = &matrix[nby+by];
-		printf("xxx: %p, %p, %p\n",args.matrix, &args , &_args[nby+by]);
 		qthread_fork((aligned_t(*)(void*))&sendFirstComputeRow_task, (void *) &args, NULL);
 	}
 }
@@ -216,16 +215,55 @@ inline void receiveLowerBorder(block_t *matrix, task_arg_t * _args,  int nbx, in
 	}
 }
 
-inline void resetFEBs( block_t * matrix, aligned_t *  matrix_dep, int nbx, int nby )
+inline void resetFEBs( block_t * matrix, aligned_t *  matrix_dep, int rank, int num_ranks, int nbx, int nby )
 {
-	//Empty matrix boarder NORTH
-	for (int by = 0; by < nby; ++by) {
-		qthread_empty((aligned_t*)&matrix[by]);
+	int rankName = rank == 0 ? FIRST : ((rank == num_ranks - 1) ? LAST : MIDDLE);
+
+	switch (rankName)
+	{
+		case FIRST:
+		{
+			//Fill matrix border NORTH
+			for (int by = 0; by < nby; ++by) {
+				qthread_fill((aligned_t*)&matrix[by]);
+			}
+			//Empty matrix border SOUTH
+			for (int by = 0; by < nby; ++by) {
+				qthread_empty((aligned_t*)&matrix[(nbx-1)*nby + by]);
+			}
+			break;
+		}
+		case LAST:
+		{
+			//Empty matrix border NORTH
+			for (int by = 0; by < nby; ++by) {
+				qthread_empty((aligned_t*)&matrix[by]);
+			}
+			//Fill matrix border SOUTH
+			for (int by = 0; by < nby; ++by) {
+				qthread_fill((aligned_t*)&matrix[(nbx-1)*nby + by]);
+			}
+			break;
+		}
+		case MIDDLE:
+		{
+			//Empty matrix border NORTH
+			for (int by = 0; by < nby; ++by) {
+				qthread_empty((aligned_t*)&matrix[by]);
+			}
+			//Empty matrix border SOUTH
+			for (int by = 0; by < nby; ++by) {
+				qthread_empty((aligned_t*)&matrix[(nbx-1)*nby + by]);
+			}
+			break;
+		}
+		default:
+		{
+			debug("Error: Invalid rank\n");
+			exit(1);
+		}
 	}
-	//Empty matrix boarder SOUTH
-	for (int by = 0; by < nby; ++by) {
-		qthread_empty((aligned_t*)&matrix[(nbx-1)*nby + by]);
-	}
+
 	//Empty matrix_dep inner
 	for (int bx = 1; bx < nbx-1; ++bx) {
 		for (int by = 1; by < nby-1; ++by) {
@@ -240,8 +278,13 @@ inline void resetFEBs( block_t * matrix, aligned_t *  matrix_dep, int nbx, int n
 	}
 }
 
+aligned_t sync_task(void *){
+	qt_barrier_enter(barrier1);
+	return 0;
+}
+
 inline void solveGaussSeidel(block_t *matrix, aligned_t *matrix_dep, task_arg_t * args, task_arg_t * args_border, int nbx, int nby, int rank, int rank_size) {	
-	resetFEBs(matrix, matrix_dep, nbx, nby);
+	resetFEBs(matrix, matrix_dep, rank, rank_size, nbx, nby);
 	
 	if (rank != 0) {
 		sendFirstComputeRow(matrix, args_border, nbx, nby, rank, rank_size);
@@ -256,16 +299,17 @@ inline void solveGaussSeidel(block_t *matrix, aligned_t *matrix_dep, task_arg_t 
 		}
 	}
 	debug("PRE_BARRIER 1\n");
+	qthread_fork_precond(sync_task, NULL, NULL, 1, matrix_dep[(nbx-1)*(nby-1)]);
 	qt_barrier_enter(barrier1);
 	debug("POST_BARRIER 1\n");
 	if (rank != rank_size - 1) {
 		sendLastComputeRow(matrix, args_border, nbx, nby, rank, rank_size);
 	}	
-	resetFEBs(matrix, matrix_dep, nbx, nby);
+	resetFEBs(matrix, matrix_dep, rank, rank_size, nbx, nby);
 	debug("PRE_BARRIER 2\n");
 	qt_barrier_enter(barrier2);
 	debug("POST_BARRIER 2\n");
-	resetFEBs(matrix, matrix_dep, nbx, nby);
+	resetFEBs(matrix, matrix_dep, rank, rank_size, nbx, nby);
 }
 
 aligned_t progress_task(void * args)
@@ -288,7 +332,7 @@ double solve(block_t *matrix, aligned_t * matrix_dep, task_arg_t * args, task_ar
 	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
 	MPIX_Continue_init(MPI_UNDEFINED, 0, MPI_INFO_NULL, &cont_req);
 	MPI_Start(&cont_req);
-	barrier1 = qt_barrier_create((rowBlocks-2)*(colBlocks-2)+1, REGION_BARRIER);
+	barrier1 = qt_barrier_create(2, REGION_BARRIER);
 	barrier2 = qt_barrier_create(colBlocks-2+1, REGION_BARRIER);
 	QCHECK(qthread_fork(progress_task, NULL, &ret));
 
