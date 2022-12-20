@@ -36,15 +36,10 @@ int main(int argc, char **argv)
 	int err = initialize(conf, rowBlocksPerRank, colBlocks, (rowBlocksPerRank - 2) * rank);
 	assert(!err);
 	
-	MPI_Barrier(MPI_COMM_WORLD);
-	
 	// Solve the problem
 	double start = get_time();
 	solve(conf.matrix, conf.matrix_dep, conf.args, conf.args_border, rowBlocksPerRank, colBlocks, conf.timesteps);
-	double end = get_time();
-
-	debug("DoneInMain\n");
-	
+	double end = get_time();	
 	if (!rank) {
 		long totalElements = (long)conf.rows * (long)conf.cols;
 		double performance = totalElements * (long)conf.timesteps;
@@ -61,14 +56,9 @@ int main(int argc, char **argv)
 	if (conf.generateImage) {
 		generateImage(conf, rowBlocks, colBlocks, rowBlocksPerRank);
 	}
-	
-	
-	err = finalize(conf);
-	assert(!err);
-	
+	assert(!finalize(conf));
 	qthread_finalize();
 	MPI_Finalize();
-	
 	return 0;
 }
 

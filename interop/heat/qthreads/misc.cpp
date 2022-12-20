@@ -12,8 +12,7 @@
 #include <matrix.hpp>
 #include <heat.hpp>
 
-int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlockOffset)
-{
+int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlockOffset) {
 	conf.matrix      = (block_t *)    malloc(rowBlocks * colBlocks * sizeof(block_t));
 	conf.matrix_dep  = (aligned_t *)  malloc(rowBlocks * colBlocks * sizeof(aligned_t));
 	conf.args        = (task_arg_t *) malloc((rowBlocks-2) * (colBlocks-2) * sizeof(task_arg_t));
@@ -29,17 +28,19 @@ int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlo
 	return 0;
 }
 
-int finalize(HeatConfiguration &conf)
-{
+int finalize(HeatConfiguration &conf) {
 	assert(conf.matrix != nullptr);
+	assert(conf.matrix_dep != nullptr);
+	assert(conf.args != nullptr);
+	assert(conf.args_border != nullptr);
 	free(conf.matrix);
-	conf.matrix = nullptr;
-	
+	free(conf.matrix_dep);
+	free(conf.args);
+	free(conf.args_border);
 	return 0;
 }
 
-int writeImage(std::string imageFileName, block_t *matrix, int rowBlocks, int colBlocks)
-{
+int writeImage(std::string imageFileName, block_t *matrix, int rowBlocks, int colBlocks) {
 	// RGB table
 	unsigned int r[1024], g[1024], b[1024];
 	
@@ -102,8 +103,7 @@ int writeImage(std::string imageFileName, block_t *matrix, int rowBlocks, int co
 	return 0;
 }
 
-void printUsage(int argc, char **argv)
-{
+void printUsage(int argc, char **argv) {
 	fprintf(stdout, "Usage: %s <-s size> | <-r rows -c cols> <-t timesteps> [OPTION]...\n", argv[0]);
 	fprintf(stdout, "Parameters:\n");
 	fprintf(stdout, "  -s, --size=SIZE\t\tuse SIZExSIZE matrix as the surface\n");
@@ -116,8 +116,7 @@ void printUsage(int argc, char **argv)
 	fprintf(stdout, "  -h, --help\t\t\tdisplay this help and exit\n\n");
 }
 
-void readParameters(int argc, char **argv, HeatConfiguration &conf)
-{
+void readParameters(int argc, char **argv, HeatConfiguration &conf) {
 	static struct option long_options[] = {
 		{"size",         required_argument,  0, 's'},
 		{"rows",         required_argument,  0, 'r'},
@@ -217,8 +216,7 @@ HeatConfiguration readConfiguration(int argc, char **argv)
 	return conf;
 }
 
-void refineConfiguration(HeatConfiguration &conf, int rowValue, int colValue)
-{
+void refineConfiguration(HeatConfiguration &conf, int rowValue, int colValue) {
 	assert(conf.rows > 0);
 	assert(conf.cols > 0);
 	assert(conf.timesteps > 0);
@@ -235,8 +233,7 @@ void refineConfiguration(HeatConfiguration &conf, int rowValue, int colValue)
 	}
 }
 
-void printConfiguration(const HeatConfiguration &conf)
-{
+void printConfiguration(const HeatConfiguration &conf) {
 	fprintf(stdout, "Rows x Cols       : %u x %u\n", conf.rows, conf.cols);
 	fprintf(stdout, "Timesteps         : %u\n", conf.timesteps);
 	fprintf(stdout, "Num. heat sources : %u\n", conf.numHeatSources);
@@ -251,8 +248,7 @@ void printConfiguration(const HeatConfiguration &conf)
 	}
 }
 
-void initializeMatrix(const HeatConfiguration &conf, block_t *matrix, int rowBlocks, int colBlocks, int rowBlockOffset)
-{
+void initializeMatrix(const HeatConfiguration &conf, block_t *matrix, int rowBlocks, int colBlocks, int rowBlockOffset) {
 	const int totalRowBlocks = conf.rowBlocks + 2;
 	const int totalRows = conf.rows + 2;
 	const int numRows = (rowBlocks - 2) * BSX + 2;
@@ -315,8 +311,7 @@ void initializeMatrix(const HeatConfiguration &conf, block_t *matrix, int rowBlo
 	}
 }
 
-double get_time()
-{
+double get_time() {
 	struct timeval tv;
 	gettimeofday(&tv, 0);
 	

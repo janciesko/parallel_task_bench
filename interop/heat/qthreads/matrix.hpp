@@ -30,8 +30,7 @@ typedef struct {
 } task_arg_t;
 
 template <typename Func>
-inline void traverseRow(block_t *matrix, int numRowBlocks, int numColBlocks, int row, int startCol, int endCol, Func func)
-{
+inline void traverseRow(block_t *matrix, int numRowBlocks, int numColBlocks, int row, int startCol, int endCol, Func func) {
 	int realRow = row + BSX-1;
 	int rowBlock = realRow / BSX;
 	for (int col = startCol; col < endCol; ++col) {
@@ -45,8 +44,7 @@ inline void traverseRow(block_t *matrix, int numRowBlocks, int numColBlocks, int
 
 // Useful functions for matrices
 template <typename Func>
-inline void traverseByRows(block_t *matrix, int rowBlocks, int colBlocks, Func func)
-{
+inline void traverseByRows(block_t *matrix, int rowBlocks, int colBlocks, Func func) {
 	int numRows = (rowBlocks - 2) * BSX + 2;
 	int numCols = (colBlocks - 2) * BSY + 2;
 
@@ -55,10 +53,8 @@ inline void traverseByRows(block_t *matrix, int rowBlocks, int colBlocks, Func f
 	}
 }
 
-
 template <typename Func>
-inline void traverseCol(block_t *matrix, int numRowBlocks, int numColBlocks, int col, int startRow, int endRow, Func func)
-{
+inline void traverseCol(block_t *matrix, int numRowBlocks, int numColBlocks, int col, int startRow, int endRow, Func func) {
 	int realCol = col + BSY-1;
 	int colBlock = realCol / BSY;
 	for (int row = startRow; row < endRow; ++row) {
