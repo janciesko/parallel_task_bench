@@ -2,8 +2,6 @@
 #include <cstdlib>
 
 #include <mpi.h>
-#include <qthread/qthread.h>
-
 #include <heat.hpp>
 
 void generateImage(const HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlocksPerRank);
@@ -42,7 +40,7 @@ int main(int argc, char **argv)
 	
 	// Solve the problem
 	double start = get_time();
-	solve(conf.matrix, conf.args, rowBlocksPerRank, colBlocks, conf.timesteps);
+	solve(conf.matrix, conf.matrix_dep, conf.args, conf.args_border, rowBlocksPerRank, colBlocks, conf.timesteps);
 	double end = get_time();
 
 	debug("DoneInMain\n");
