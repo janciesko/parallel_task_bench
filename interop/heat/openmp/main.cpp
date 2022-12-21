@@ -26,8 +26,13 @@ int main(int argc, char **argv)
 	
 	HeatConfiguration conf = readConfiguration(argc, argv);
 	refineConfiguration(conf, rank_size * BSX, BSY);
-	if (!rank) printConfiguration(conf);
-	
+
+	#ifdef BENCHOUTPUT
+	#else
+	if (!rank)
+	 printConfiguration(conf);
+	#endif
+
 	conf.rowBlocks = conf.rows / BSX;
 	conf.colBlocks = conf.cols / BSY;
 	int rowBlocks = conf.rowBlocks + 2;
@@ -43,8 +48,6 @@ int main(int argc, char **argv)
 	double start = get_time();
 	solve(conf.matrix, rowBlocksPerRank, colBlocks, conf.timesteps);
 	double end = get_time();
-
-	debug("DoneInMain\n");
 	
 	if (!rank) {
 		long totalElements = (long)conf.rows * (long)conf.cols;
@@ -52,11 +55,18 @@ int main(int argc, char **argv)
 		performance = performance / (end - start);
 		performance = performance / 1000000.0;
 		int threads = omp_get_max_threads();
+		int num_tasks = conf.rowBlocks *  conf.colBlocks;
+		int num_borders = 2 * conf.rowBlocks + 2 * conf.colBlocks;
 		
+		#ifdef BENCHOUTPUT
+		fprintf(stdout, "%d, %d, %d, %d, %d, %d, %d, %f, %f\n", rank_size, threads, num_tasks, num_borders,
+		 totalElements,totalElements * sizeof(double) / 1024/1024, conf.timesteps, end - start, performance);
+		#else
 		fprintf(stdout, "rows, %d, cols, %d, rows_per_rank, %d, total, %ld, total_per_rank, %ld, bs, %d"
 				", ranks, %d, threads, %d, timesteps, %d, time, %f, performance, %f\n",
 				conf.rows, conf.cols, conf.rows / rank_size, totalElements, totalElements / rank_size,
 				BSX, rank_size, threads, conf.timesteps, end - start, performance);
+		#endif
 	}
 	
 	if (conf.generateImage) {

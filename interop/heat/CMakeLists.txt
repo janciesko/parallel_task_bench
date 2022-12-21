@@ -13,6 +13,7 @@ project(omp-continue-test VERSION 1.0 LANGUAGES C CXX)
 option(ENABLE_OPENMP "Whether to build implementation using OPENMP" OFF)
 option(ENABLE_ARGOBOTS "Whether to build implementation using ARGOBOTS" OFF)
 option(ENABLE_QTHREADS "Whether to build implementation using QTHREADS" OFF)
+option(ENABLE_BENCHMARK_OUTPUT "Whether to build with printf outputs for benchmarking" OFF)
 
 set(OMP_MIN_VERSION 4.5)
 
@@ -22,7 +23,7 @@ if (NOT MPI_FOUND)
 endif (NOT MPI_FOUND)
 
 set(CONT_SEARCH_DIRS)
-foreach(DIR ${MPI_2_CXX_INCLUDE_DIRS})
+foreach(DIR ${MPI_INCLUDE_PATH})
   list(APPEND CONT_SEARCH_DIRS "${DIR}/openmpi/mpiext")
 endforeach()
 
@@ -90,6 +91,12 @@ foreach(DIR ${SOURCE_DIRS})
   if(ENABLE_OPENMP)
      target_link_libraries(${TARGET_NAME} PUBLIC OpenMP::OpenMP_CXX MPI::MPI_CXX)
   endif()
+
+  if(ENABLE_BENCHMARK_OUTPUT)
+    target_compile_definitions(${TARGET_NAME} PRIVATE "BENCHOUTPUT")
+    message(STATUS "Benchmark output enabled.")
+  endif()
+
 
 
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")

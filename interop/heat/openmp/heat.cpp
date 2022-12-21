@@ -52,12 +52,10 @@ inline void sendFirstComputeRow(block_t *matrix, int nbx, int nby, int rank, int
     omp_event_handle_t event;
 		#pragma omp task depend(in: matrix[nby + by]) detach(event) /* depend(inout: serial)*/
 		{
-			// TODO: Switch to the non-blocking MPI counterpart
 			// MPI_Send(&matrix[nby+by][0], BSY, MPI_DOUBLE, rank - 1, by, MPI_COMM_WORLD);
 			MPI_Request request;
 			debug("Sending first compute row to %d tag %d\n", rank-1, by);
 			MPI_Isend(&matrix[nby+by][0], BSY, MPI_DOUBLE, rank - 1, by, MPI_COMM_WORLD, &request);
-			// TODO: Bind the completion of the task to the finalization of the MPI request (TAMPI_Iwait)
 			//TAMPI_Iwait(&request, MPI_STATUS_IGNORE);
 			MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 		}
@@ -141,7 +139,7 @@ inline void solveGaussSeidel(block_t *matrix, int nbx, int nby, int rank, int ra
 	}
 
 	//FIXME: This is optional and should be removed for benchmarking
-	#pragma omp taskwait
+	//#pragma omp taskwait
 	
 }
 
@@ -185,6 +183,7 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps) {
           }
         }
       }
+
 	  #pragma omp single
 	  #pragma omp task default(shared) shared(do_progress)
 	  {
