@@ -77,8 +77,17 @@ list(APPEND SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/${BACKEND_NAME_LOWER}")
 
 message(STATUS ${BACKEND_NAME_LOWER})
 
+#Add utils lib
+file(GLOB SUBDIR_UTIL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/util/*.c)
+file(GLOB SUBDIR_UTIL_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/util/*.h)  
+add_library( osu_util SHARED ${SUBDIR_UTIL_SOURCES})
+target_include_directories(osu_util PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/util/)
+message (STATUS ${SUBDIR_UTIL_SOURCES})
+
+#Add targets
 foreach(DIR ${SOURCE_DIRS})
-  file(GLOB SUBDIR_SOURCES ${DIR}/*latency*)
+  file(GLOB SUBDIR_SOURCES ${DIR}/*.c)
+  file(GLOB SUBDIR_HEADERS ${DIR}/*.h)  
 
   foreach(SRC_FILE ${SUBDIR_SOURCES})
     get_filename_component(TARGET_NAME ${SRC_FILE} NAME)
@@ -88,8 +97,8 @@ foreach(DIR ${SOURCE_DIRS})
     message(STATUS "DIR: ${DIR}")
     message(STATUS "TARGET_NAME: " ${TARGET_NAME})
 
-    add_executable(${TARGET_NAME} ${SUBDIR_SOURCES} ${SUBDIR_SOURCES})
-    target_include_directories(${TARGET_NAME} PRIVATE ${DIR})
+    add_executable(${TARGET_NAME} ${SRC_FILE})
+    target_link_libraries(${TARGET_NAME} osu_util)
     target_include_directories(${TARGET_NAME} PRIVATE ${HEADER_DIRS})
     add_compile_options(-Wall -Wextra -pedantic -O3)
 
