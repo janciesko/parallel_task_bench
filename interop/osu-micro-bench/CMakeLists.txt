@@ -14,6 +14,7 @@ option(GDB "start the attach loops so that gdb can be attached to each proc" OFF
 option(ENABLE_OPENMP "Whether to build implementation using OPENMP" OFF)
 option(ENABLE_ARGOBOTS "Whether to build implementation using ARGOBOTS" OFF)
 option(ENABLE_QTHREADS "Whether to build implementation using QTHREADS" OFF)
+option(ENABLE_PTREADS "Whether to build implementation using PTHREADS" OFF)
 
 set(OMP_MIN_VERSION 4.5)
 
@@ -46,6 +47,10 @@ if(ENABLE_OPENMP)
 
 endif()
 
+if(ENABLE_PTHREADS)
+  set(BACKEND_NAME "Pthreads")
+endif()
+
 if(ENABLE_ARGOBOTS)
   set(BACKEND_NAME "Argobots")
   find_package(Argobots REQUIRED)
@@ -73,8 +78,7 @@ list(APPEND SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/${BACKEND_NAME_LOWER}")
 message(STATUS ${BACKEND_NAME_LOWER})
 
 foreach(DIR ${SOURCE_DIRS})
-  file(GLOB SUBDIR_SOURCES ${DIR}/*.c)
-  file(GLOB SUBDIR_HEADERS ${DIR}/*.h)  
+  file(GLOB SUBDIR_SOURCES ${DIR}/*latency*)
 
   foreach(SRC_FILE ${SUBDIR_SOURCES})
     get_filename_component(TARGET_NAME ${SRC_FILE} NAME)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002-2019 the Network-Based Computing Laboratory
+ * Copyright (C) 2002-2022 the Network-Based Computing Laboratory
  * (NBCL), The Ohio State University.
  *
  * Contact: Dr. D. K. Panda (panda@cse.ohio-state.edu)
@@ -27,8 +27,11 @@
 #include <inttypes.h>
 #include <sys/time.h>
 #include <limits.h>
+#include <sys/types.h>
 
-
+#ifdef _ENABLE_PAPI_
+#include <papi.h>
+#endif
 
 #ifdef _ENABLE_CUDA_
 #include "cuda.h"
@@ -62,6 +65,19 @@
 #   define CUDA_KERNEL_ENABLED 0
 #endif
 
+#ifdef _ENABLE_NCCL_
+#   define NCCL_ENABLED 1
+#else
+#   define NCCL_ENABLED 0
+#endif
+
+#ifdef _ENABLE_ROCM_
+#   define ROCM_ENABLED 1
+#   include "hip/hip_runtime.h"
+#else
+#   define ROCM_ENABLED 0
+#endif
+
 #ifndef BENCHMARK
 #   define BENCHMARK "MPI%s BENCHMARK NAME UNSET"
 #endif
@@ -79,6 +95,15 @@
 #ifndef FLOAT_PRECISION
 #   define FLOAT_PRECISION 2
 #endif
+
+#define OMB_CHECK_NULL_AND_EXIT(var, msg)                       \
+do {                                                            \
+    if (NULL == var) {                                          \
+        fprintf(stderr, "[%s:%d] Failed with message '%s'\n",   \
+         __FILE__, __LINE__, msg);                              \
+        exit(EXIT_FAILURE);                                     \
+    }                                                           \
+} while (0)
 
 #define CHECK(stmt)                                              \
 do {                                                             \
@@ -104,6 +129,19 @@ do {                                                                    \
 } while (0)
 #endif
 
+#if defined(_ENABLE_ROCM_)
+#define ROCM_CHECK(stmt)                                                \
+do {                                                                    \
+   hipError_t errno = (stmt);                                           \
+   if (0 != errno) {                                                    \
+       fprintf(stderr, "[%s:%d] ROCM call '%s' failed with %d: %s \n",  \
+        __FILE__, __LINE__, #stmt, errno, hipGetErrorString(errno));    \
+       exit(EXIT_FAILURE);                                              \
+   }                                                                    \
+   assert(hipSuccess == errno);                                         \
+} while (0)
+#endif
+
 #define TIME() getMicrosecondTimeStamp()
 double getMicrosecondTimeStamp();
 
@@ -116,17 +154,18 @@ cpu, double comm, double wait, double init, int iterations);
 
 void allocate_host_arrays();
 
-void
-calculate_and_print_stats(int rank, int size, int numprocs,
+double calculate_and_print_stats(int rank, int size, int numprocs,
                           double timer, double latency,
                           double test_time, double cpu_time,
-                          double wait_time, double init_time);
+                          double wait_time, double init_time,
+                          int errors);
 
 
 enum mpi_req{
     MAX_REQ_NUM = 1000
 };
 
+#define OMB_LONG_OPTIONS_ARRAY_SIZE 23
 #define BW_LOOP_SMALL 100
 #define BW_SKIP_SMALL 10
 #define BW_LOOP_LARGE 20
@@ -146,7 +185,12 @@ enum mpi_req{
 #define OSHM_LOOP_SMALL_MR 500
 #define OSHM_LOOP_LARGE_MR 50
 #define OSHM_LOOP_ATOMIC 500
-
+#define VALIDATION_SKIP_DEFAULT 5
+#define VALIDATION_SKIP_MAX 10
+#define OMB_DDT_STRIDE_DEFAULT 8
+#define OMB_DDT_BLOCK_LENGTH_DEFAULT 4
+#define OMB_FILE_PATH_MAX_LENGTH 1024
+#define OMB_DDT_FILE_PATH_MAX_LENGTH OMB_FILE_PATH_MAX_LENGTH
 #define MAX_MESSAGE_SIZE (1 << 22)
 #define MAX_MSG_SIZE_PT2PT (1<<20)
 #define MAX_MSG_SIZE_COLL (1<<20)
@@ -175,7 +219,8 @@ enum accel_type {
     NONE,
     CUDA,
     OPENACC,
-    MANAGED
+    MANAGED,
+    ROCM
 };
 
 enum target_type {
@@ -198,9 +243,21 @@ enum test_subtype {
     BW,
     LAT,
     LAT_MT,
-    LAT_ABT,
-    LAT_QT,
+    LAT_MP,
     NBC,
+    BARRIER,
+    ALLTOALL,
+    GATHER,
+    REDUCE_SCATTER,
+    NBC_REDUCE_SCATTER,
+    NBC_ALLTOALL,
+    NBC_GATHER,
+    NBC_REDUCE,
+    NBC_SCATTER,
+    NBC_BCAST,
+    SCATTER,
+    REDUCE,
+    BCAST
 };
 
 enum test_synctype {
@@ -228,6 +285,25 @@ enum SYNC {
 #endif
 };
 
+enum buffer_num {
+    SINGLE,
+    MULTIPLE
+};
+
+/*ddt types*/
+enum omb_ddt_types_t {
+    OMB_DDT_CONTIGUOUS,
+    OMB_DDT_VECTOR,
+    OMB_DDT_INDEXED
+};
+
+/*ddt type parameters*/
+typedef struct omb_ddt_type_parameters {
+    size_t block_length;
+    size_t stride;
+    char filepath[OMB_DDT_FILE_PATH_MAX_LENGTH];
+} omb_ddt_type_parameters_t;
+
 /*variables*/
 extern char const *win_info[20];
 extern char const *sync_info[20];
@@ -244,6 +320,7 @@ struct options_t {
     size_t max_mem_limit;
     size_t skip;
     size_t skip_large;
+    size_t warmup_validation;
     size_t window_size_large;
     int num_probes;
     int device_array_size;
@@ -254,22 +331,33 @@ struct options_t {
 
     char src;
     char dst;
+
+    char MMsrc;
+    char MMdst;
+
     int num_threads;
     int sender_thread;
-    int num_xstreams;
-    int num_sheps;
-    int sender_xstreams;
-    int sender_sheps;
+    int num_processes;
+    int sender_processes;
     char managedSend;
     char managedRecv;
     enum WINDOW win;
     enum SYNC sync;
 
-    int thread_multiple;
     int window_size;
     int window_varied;
     int print_rate;
     int pairs;
+    int validate;
+    enum buffer_num buf_num;
+    int graph;
+    int graph_output_term;
+    int graph_output_png;
+    int graph_output_pdf;
+    int omb_enable_ddt;
+    enum omb_ddt_types_t ddt_type;
+    omb_ddt_type_parameters_t ddt_type_parameters;
+    int papi_enabled;
 };
 
 struct bad_usage_t{
@@ -289,6 +377,7 @@ extern struct bad_usage_t bad_usage;
  */
 extern int process_one_sided_options (int opt, char *arg);
 int process_options (int argc, char *argv[]);
+int omb_ddt_process_options(char *optarg, struct bad_usage_t *bad_usage);
 int setAccel(char);
 
 /*
@@ -301,6 +390,11 @@ void enable_accel_support (void);
 #define DEF_NUM_THREADS 2
 #define MIN_NUM_THREADS 1
 #define MAX_NUM_THREADS 128
+
+#define DEF_NUM_PROCESSES 2
+#define MIN_NUM_PROCESSES 1
+#define MAX_NUM_PROCESSES 128
+#define CHILD_SLEEP_SECONDS 2
 
 #define WINDOW_SIZES {1, 2, 4, 8, 16, 32, 64, 128}
 #define WINDOW_SIZES_COUNT   (8)

@@ -134,21 +134,16 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-
     printf("options.sender_thread %d\n", options.sender_thread);
-    if(options.sender_thread!=-1) {
-        num_threads_sender=options.sender_thread;
-        dep_buffer = malloc(num_threads_sender*sizeof(char));
-        tags = malloc(num_threads_sender*sizeof(tags[0]));
-    } else {
-        dep_buffer = malloc(options.num_threads*sizeof(char));
-        tags = malloc(options.num_threads*sizeof(tags[0]));
-    }
+
+    num_threads_sender = (options.sender_thread!=-1) ? options.num_threads_sender : options.num_threads;
+    dep_buffer = malloc(num_threads_sender*sizeof(char));
+    tags = malloc(num_threads_sender*sizeof(tags[0]));
 
     if(options.sender_xstreams!=-1) {
         num_xstreams_sender=options.sender_xstreams;
     }
-
+   
     if(myid == 0) {
         printf("# Number of Sender threads: %d \n# Number of Receiver threads: %d\n",num_threads_sender,options.num_threads );
         printf("# Number of Sender xstreams: %d \n# Number of Receiver xstreams: %d\n",num_xstreams_sender,options.num_xstreams );
@@ -158,25 +153,21 @@ int main(int argc, char *argv[])
         fflush(stdout);
 
         // an OpenMP thread is an execution stream
-#pragma omp parallel num_threads(num_xstreams_sender) default(shared)
-{
-        send_thread();
-#pragma omp barrier
-}
-    }
-
-    else {
-
-#pragma omp parallel num_threads(options.num_xstreams) default(shared)
-{
-        recv_thread();
-#pragma omp barrier
-}
+        #pragma omp parallel num_threads(num_xstreams_sender) default(shared)
+        {
+            send_thread(); 
+        #pragma omp barrier
+        }
+    } else {
+        #pragma omp parallel num_threads(options.num_xstreams) default(shared)
+        {
+            recv_thread();
+        #pragma omp barrier
+        }
     }
 
     free(dep_buffer);
     MPI_CHECK(MPI_Finalize());
-
     return EXIT_SUCCESS;
 }
 
@@ -219,17 +210,17 @@ void recv_thread() {
 
         int finished;
 
-#pragma omp critical
-{
-        finished = finished_size++;
+        #pragma omp critical
+        {
+            finished = finished_size++;
 
-        if(finished == options.num_threads) {
-            MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-            finished_size = 1;
+            if(finished == options.num_threads) {
+                MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+                finished_size = 1;
+            }
         }
-}
         // wait for all threads to arrive
-#pragma omp barrier
+        #pragma omp barrier
         if(size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
             options.skip = options.skip_large;
@@ -240,8 +231,8 @@ void recv_thread() {
                 t = thread_id;
             }
             // a thread is a stream of serialized tasks
-#pragma omp task depend(inout:dep_buffer[t]) firstprivate(size, t, i) default(shared)
-{
+            #pragma omp task depend(inout:dep_buffer[t]) firstprivate(size, t, i) default(shared)
+            {
             thread_tag_t *tag = &tags[t];
             tag->size = size;
             if(options.sender_thread>1) {
@@ -254,10 +245,10 @@ void recv_thread() {
                           &tag->status);
                 MPI_Send (tag->s_buf, size, MPI_CHAR, 0, 2, MPI_COMM_WORLD);
             }
-}
         }
-        // wait for all tasks in this iteration to complete
-#pragma omp taskwait
+    }
+    // wait for all tasks in this iteration to complete
+    #pragma omp taskwait
 
         iter++;
     }
@@ -266,9 +257,7 @@ void recv_thread() {
 
 }
 
-
 void send_thread() {
-    //int size, iter;
     int myid;
     char *s_buf, *r_buf;
     double t = 0, latency;
@@ -307,20 +296,18 @@ void send_thread() {
     }
 
     for(size_t size = options.min_message_size, iter = 0; size <= options.max_message_size; size = (size ? size * 2 : 1)) {
-
         int finished;
 
-#pragma omp critical
-{
-        finished = finished_size++;
-
-        if(finished == num_threads_sender) {
-            MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-            finished_size = 1;
+        #pragma omp critical
+        {
+            finished = finished_size++;
+            if(finished == num_threads_sender) {
+                MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+                finished_size = 1;
+            }
         }
-}
         // wait for all threads to arrive
-#pragma omp barrier
+        #pragma omp barrier
 
         if(size > LARGE_MESSAGE_SIZE) {
             options.iterations = options.iterations_large;
@@ -340,8 +327,7 @@ void send_thread() {
 
             //printf("Sender i %d t %d thread_id %d\n", i, t, thread_id);
             // a thread is a stream of serialized tasks
-#pragma omp task depend(inout:dep_buffer[t]) firstprivate(size, t, i) default(shared)
-{
+            #pragma omp task depend(inout:dep_buffer[t]) firstprivate(size, t, i) default(shared)
             thread_tag_t *tag = &tags[t];
             if(i == options.skip) {
                 t_start = MPI_Wtime();
@@ -349,7 +335,6 @@ void send_thread() {
             }
 
             if(options.sender_thread>1) {
-
                 MPI_CHECK(MPI_Send(tag->s_buf, size, MPI_CHAR, 1, i, MPI_COMM_WORLD));
                 MPI_CHECK(MPI_Recv(tag->r_buf, size, MPI_CHAR, 1, i, MPI_COMM_WORLD,
                           &tag->status));
@@ -359,12 +344,11 @@ void send_thread() {
                 MPI_CHECK(MPI_Send(tag->s_buf, size, MPI_CHAR, 1, 1, MPI_COMM_WORLD));
                 MPI_CHECK(MPI_Recv(tag->r_buf, size, MPI_CHAR, 1, 2, MPI_COMM_WORLD,
                           &tag->status));
-
             }
-}
         }
+    }
 
-#pragma omp taskwait
+    #pragma omp taskwait
 
         if(flag_print==1) {
             t_end = MPI_Wtime ();

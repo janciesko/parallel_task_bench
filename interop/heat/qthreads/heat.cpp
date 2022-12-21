@@ -331,6 +331,7 @@ inline void solveGaussSeidel(block_t *matrix, aligned_t *matrix_dep, task_arg_t 
 aligned_t progress_task(void * args)
 {
 	int flag = 0;
+	debug("Progress task\n");
 	  while(do_progress) { 
 	        MPI_Test(&cont_req, &flag, MPI_STATUS_IGNORE);
             if (flag) {
@@ -338,6 +339,7 @@ aligned_t progress_task(void * args)
             }
         	qthread_yield();        
       }
+	debug("Progress task done\n");
 	return 0;
 }
 
@@ -347,7 +349,7 @@ double solve(block_t *matrix, aligned_t * matrix_dep, task_arg_t * args, task_ar
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
 
-	MPIX_Continue_init(MPI_UNDEFINED, 0, MPI_INFO_NULL, &cont_req);
+	MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
 	MPI_Start(&cont_req);
 
 	barrier1 = qt_barrier_create(2, REGION_BARRIER);
@@ -361,6 +363,8 @@ double solve(block_t *matrix, aligned_t * matrix_dep, task_arg_t * args, task_ar
 	}
 	do_progress = 0;
 	QCHECK(qthread_readFF(NULL, &ret));
+
+	debug("Solve completed\n");
 	
 	MPI_Request_free(&cont_req);
 	return 0.0;
