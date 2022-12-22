@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 		int num_borders = 2 * conf.rowBlocks + 2 * conf.colBlocks;
 		
 		#ifdef BENCHOUTPUT
-		fprintf(stdout, "%d, %d, %d, %d, %d, %d, %d, %f, %f\n", rank_size, threads, num_tasks, num_borders,
+		fprintf(stdout, "%d, %d, %d, %d, %lld, %d, %d, %f, %f\n", rank_size, threads, num_tasks, num_borders,
 		 totalElements,totalElements * sizeof(double) / 1024/1024, conf.timesteps, end - start, performance);
 		#else
 		fprintf(stdout, "rows, %d, cols, %d, rows_per_rank, %d, total, %ld, total_per_rank, %ld, bs, %d"

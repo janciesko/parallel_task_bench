@@ -22,7 +22,6 @@ inline void traverseRow(block_t *matrix, int numRowBlocks, int numColBlocks, int
 		int realCol = col + BSY-1;
 		int colBlock = realCol / BSY;
 		block_t &block = matrix[rowBlock*numColBlocks + colBlock];
-		
 		func(row, col, block[realRow%BSX][realCol%BSY]);
 	}
 }
@@ -39,7 +38,6 @@ inline void traverseByRows(block_t *matrix, int rowBlocks, int colBlocks, Func f
 	}
 }
 
-
 template <typename Func>
 inline void traverseCol(block_t *matrix, int numRowBlocks, int numColBlocks, int col, int startRow, int endRow, Func func)
 {
@@ -49,7 +47,6 @@ inline void traverseCol(block_t *matrix, int numRowBlocks, int numColBlocks, int
 		int realRow = row + BSX-1;
 		int rowBlock = realRow / BSX;
 		block_t &block = matrix[rowBlock*numColBlocks + colBlock];
-		
 		func(row, col, block[realRow%BSX][realCol%BSY]);
 	}
 }

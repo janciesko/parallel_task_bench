@@ -34,6 +34,7 @@ struct HeatConfiguration {
 	int rowBlocks;
 	int colBlocks;
 	block_t *matrix;
+	int * serial;
 	int numHeatSources;
 	HeatSource *heatSources;
 	std::string confFileName;

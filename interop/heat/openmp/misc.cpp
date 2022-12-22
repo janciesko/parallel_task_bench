@@ -12,9 +12,12 @@
 #include <matrix.hpp>
 #include <heat.hpp>
 
+extern int * serial;
+
 int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlockOffset)
 {
 	conf.matrix = (block_t *) malloc(rowBlocks * colBlocks * sizeof(block_t));
+	serial = (int *) malloc(colBlocks * sizeof(int));
 	if (conf.matrix == NULL) {
 		fprintf(stderr, "Error: Memory cannot be allocated!\n");
 		exit(1);

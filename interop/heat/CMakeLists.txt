@@ -14,6 +14,8 @@ option(ENABLE_OPENMP "Whether to build implementation using OPENMP" OFF)
 option(ENABLE_ARGOBOTS "Whether to build implementation using ARGOBOTS" OFF)
 option(ENABLE_QTHREADS "Whether to build implementation using QTHREADS" OFF)
 option(ENABLE_BENCHMARK_OUTPUT "Whether to build with printf outputs for benchmarking" OFF)
+option(ENABLE_USE_BLOCKINGMPI "Whether to use blocking MPI calls" OFF)
+option(ENABLE_USE_TAKWAIT "Whether to use a taskwait at solve" OFF)
 
 set(OMP_MIN_VERSION 4.5)
 
@@ -94,10 +96,18 @@ foreach(DIR ${SOURCE_DIRS})
 
   if(ENABLE_BENCHMARK_OUTPUT)
     target_compile_definitions(${TARGET_NAME} PRIVATE "BENCHOUTPUT")
-    message(STATUS "Benchmark output enabled.")
+    message(STATUS "ENABLE_BENCHMARK_OUTPUT enabled.")
   endif()
 
+  if(ENABLE_USE_BLOCKINGMPI)
+    target_compile_definitions(${TARGET_NAME} PRIVATE "BLOCKINGMPI")
+    message(STATUS "ENABLE_USE_BLOCKINGMPI enabled.")
+  endif()
 
+  if(ENABLE_USE_TAKWAIT)
+  target_compile_definitions(${TARGET_NAME} PRIVATE "TASKWAIT")
+  message(STATUS "ENABLE_USE_TAKWAIT enabled.")
+endif()
 
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${TARGET_NAME} PUBLIC "DEBUG=1")
