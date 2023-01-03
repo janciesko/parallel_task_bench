@@ -160,7 +160,7 @@ inline void solveGaussSeidel(block_t *matrix, int nbx, int nby, int rank, int ra
 	
 }
 
-void polling_task(int * do_progress)
+void polling_task(volatile int * do_progress, volatile int * in_compute)
 {
 	#ifdef TROTTLEPOLLING
 	#pragma omp single nowait
@@ -194,7 +194,7 @@ void polling_task(int * do_progress)
 	#pragma omp single nowait
 	#pragma omp task shared(do_progress, in_compute) untied
 	{
-		while(do_progress) {
+		while(*do_progress) {
 		{
 			int flag;
 			MPI_Test(&cont_req, &flag, MPI_STATUS_IGNORE);
@@ -221,7 +221,7 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps) {
 	MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
 	MPI_Start(&cont_req);
 
-    static volatile int do_progress = 1; // whether to keep triggering progress
+    volatile int do_progress = 1; // whether to keep triggering progress
     volatile int in_compute  = 0; // whether the compute task has been launched
 
 	#pragma omp parallel
@@ -229,7 +229,7 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps) {
 	  #ifdef BLOCKINGMPI
 	 	// Do no use progres task
 	  #else
-	  polling_task(&do_progress);
+	  polling_task(&do_progress, &in_compute);
 	  #endif
 
 	  #pragma omp single
