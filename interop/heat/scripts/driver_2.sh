@@ -29,7 +29,7 @@ if [ x"$TYPE" = xheat_OpenMP ]; then
     bash ../scripts/run_2.sh $bin $conf
 fi
 
-if [ x"$TYPE" = heat_OpenMP_TW ]; then
+if [ x"$TYPE" = xheat_OpenMP_TW ]; then
     #=========================================
     #=========================================
     #=========================================
@@ -58,7 +58,7 @@ if [ x"$TYPE" = heat_OpenMP_TW ]; then
     bash ../scripts/run_2.sh $bin $conf
 fi
 
-if [ x"$TYPE" = heat_OpenMP_BLOCKING ]; then
+if [ x"$TYPE" = xheat_OpenMP_BLOCKING ]; then
     #=========================================
     #=========================================
     #=========================================

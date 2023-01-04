@@ -24,7 +24,6 @@ int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlo
 	}
 	
 	initializeMatrix(conf, conf.matrix, rowBlocks, colBlocks, rowBlockOffset);
-	
 	return 0;
 }
 
@@ -33,7 +32,6 @@ int finalize(HeatConfiguration &conf)
 	assert(conf.matrix != nullptr);
 	free(conf.matrix);
 	conf.matrix = nullptr;
-	
 	return 0;
 }
 
