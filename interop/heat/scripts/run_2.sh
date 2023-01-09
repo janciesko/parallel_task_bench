@@ -16,7 +16,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=1
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
@@ -66,7 +66,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=4
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
@@ -91,7 +91,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=2
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
@@ -116,7 +116,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=4
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
