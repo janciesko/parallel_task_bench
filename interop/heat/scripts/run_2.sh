@@ -5,10 +5,13 @@
 
 BINARY=$1
 TYPE=$2
+HOSTNAME=$3
 
 threads_init=48
 size_init=1024
 steps=10
+
+LIBGOMP_PATH="/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/gcc/install/lib64:/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/ompi/install/lib:/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/ucx/install/lib"
 
 if [ x"$TYPE" = x1x1 ];
 then
@@ -16,7 +19,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=1
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
@@ -25,8 +28,8 @@ then
             for rep in {1..3..1}; do
                 mpirun \
                 -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
-                -x LD_LIBRARY_PATH=/home/jciesko/RAndD/MPIContinuations/software/gcc/install_caraway/lib64:$LD_LIBARY_PATH \
-                -npernode $ranks -host caraway02 \
+                -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH \
+                -npernode $ranks -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
             done
             let threads=$threads*2
@@ -41,7 +44,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=2
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
@@ -50,8 +53,8 @@ then
             for rep in {1..3..1}; do
                 mpirun \
                 -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
-                -x LD_LIBRARY_PATH=/home/jciesko/RAndD/MPIContinuations/software/gcc/install_caraway/lib64:$LD_LIBARY_PATH \
-                -npernode $ranks -host caraway02,caraway02 \
+                -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH \
+                -npernode $ranks -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
             done
             let threads=$threads*2
@@ -66,7 +69,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=4
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
@@ -75,8 +78,8 @@ then
             for rep in {1..3..1}; do
                 mpirun \
                 -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
-                -x LD_LIBRARY_PATH=/home/jciesko/RAndD/MPIContinuations/software/gcc/install_caraway/lib64:$LD_LIBARY_PATH \
-                -npernode $ranks -host caraway02,caraway02,caraway02,caraway02  \
+                -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH \
+                -npernode $ranks -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
             done
             let threads=$threads*2
@@ -91,7 +94,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=2
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
@@ -100,8 +103,8 @@ then
             for rep in {1..3..1}; do
                 mpirun \
                 -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
-                -x LD_LIBRARY_PATH=/home/jciesko/RAndD/MPIContinuations/software/gcc/install_caraway/lib64:$LD_LIBARY_PATH \
-                -npernode 1 -host caraway02,caraway03 \
+                -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH -x HCOLL_RCACHE=^ucs \
+                -npernode 1 -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
             done
             let threads=$threads*2
@@ -116,7 +119,7 @@ then
         | tee -a ${BINARY}_$ranks_$TYPE.out
     ranks=4
     let size=$size_init*$ranks
-    for s in {1..6..1}; do
+    for s in {1..5..1}; do
         threads=$threads_init
         for t in {1..1..1}; do
             if [ $threads -gt 48 ]; then
@@ -125,8 +128,8 @@ then
             for rep in {1..3..1}; do
                 mpirun \
                 -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
-                -x LD_LIBRARY_PATH=/home/jciesko/RAndD/MPIContinuations/software/gcc/install_caraway/lib64:$LD_LIBARY_PATH \
-                -npernode 1 -host caraway01,caraway02,caraway03,caraway04 \
+                -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH -x HCOLL_RCACHE=^ucs \
+                -npernode 1 -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
             done
             let threads=$threads*2
