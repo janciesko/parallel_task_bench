@@ -23,7 +23,7 @@ if [ x"$TYPE" = xheat_OpenMP ]; then
     #=========================================
     conf=2x1
     echo "$bin $conf"
-    #bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
     #=========================================
     conf=4x1
     echo "$bin $conf"

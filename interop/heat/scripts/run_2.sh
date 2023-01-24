@@ -7,9 +7,13 @@ BINARY=$1
 TYPE=$2
 HOSTNAME=$3
 
-threads_init=48
+threads_init=12
 size_init=1024
 steps=10
+
+OMP_FLAGS="-x OMP_PROC_BIND=spread -x OMP_PLACES=cores"
+MPI_FLAGS="--bind-to none -x HCOLL_RCACHE=^ucs"
+#OMP_FLAGS=
 
 LIBGOMP_PATH="/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/gcc/install/lib64:/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/ompi/install/lib:/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/ucx/install/lib"
 
@@ -27,8 +31,8 @@ then
             fi
             for rep in {1..3..1}; do
                 mpirun \
-                -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
-                -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH \
+                $MPI_FLAGS \
+                -x OMP_NUM_THREADS=$threads $OMP_FLAGS  \
                 -npernode $ranks -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
             done
@@ -52,7 +56,8 @@ then
             fi
             for rep in {1..3..1}; do
                 mpirun \
-                -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
+                $MPI_FLAGS \
+                -x OMP_NUM_THREADS=$threads $OMP_FLAGS \
                 -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH \
                 -npernode $ranks -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
@@ -77,7 +82,8 @@ then
             fi
             for rep in {1..3..1}; do
                 mpirun \
-                -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
+                $MPI_FLAGS \
+                -x OMP_NUM_THREADS=$threads $OMP_FLAGS \
                 -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH \
                 -npernode $ranks -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
@@ -102,7 +108,8 @@ then
             fi
             for rep in {1..3..1}; do
                 mpirun \
-                -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
+                $MPI_FLAGS \
+                -x OMP_NUM_THREADS=$threads $OMP_FLAGS \
                 -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH -x HCOLL_RCACHE=^ucs \
                 -npernode 1 -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
@@ -127,7 +134,8 @@ then
             fi
             for rep in {1..3..1}; do
                 mpirun \
-                -x OMP_NUM_THREADS=$threads -x OMP_PROC_BIND=spread -x OMP_PLACES=cores \
+                $MPI_FLAGS \
+                -x OMP_NUM_THREADS=$threads $OMP_FLAGS \
                 -x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH -x HCOLL_RCACHE=^ucs \
                 -npernode 1 -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
