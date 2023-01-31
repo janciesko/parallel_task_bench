@@ -2,7 +2,7 @@
 #define MATRIX_HPP
 
 #ifndef BSX
-#define BSX 1024
+#define BSX 256
 #endif
 
 #ifndef BSY
