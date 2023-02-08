@@ -19,7 +19,6 @@ volatile int do_progress;
 qt_barrier_t * barrier;
 
 aligned_t solveBlock_task(task_arg_t * args) {
-	
 	/* Unpack task data */
 	int rank = args->rank;
 	int rank_size = args->rank_size;
@@ -29,8 +28,6 @@ aligned_t solveBlock_task(task_arg_t * args) {
 	int nbx = args->nbx;
 	int nby = args->nby;
 	block_t * matrix = args->matrix;
-
-
 
 	block_t &targetBlock       = matrix[CENTER];
 	const block_t &centerBlock = matrix[CENTER];
@@ -143,15 +140,15 @@ void solveBlock(block_t *matrix, task_arg_t * _args, int rank, int rank_size, in
 }
 
 int release_event_fill(int rc, void *data) {
-  debug("*** Released Fill Event: %p\n", (aligned_t *)data);
-  qthread_writeEF((aligned_t*)data, (aligned_t*)data);
-  return MPI_SUCCESS;
+	debug("*** Released Fill Event: %p\n", (aligned_t *)data);
+	qthread_writeEF((aligned_t*)data, (aligned_t*)data);
+	return MPI_SUCCESS;
 }
 
 int release_event_barrier(int rc, void *data) {
-  debug("*** Released Barrier: %p\n", (aligned_t *)data);
-  qt_barrier_enter(barrier);
-  return MPI_SUCCESS;
+	debug("*** Released Barrier: %p\n", (aligned_t *)data);
+	qt_barrier_enter(barrier);
+	return MPI_SUCCESS;
 }
 
 aligned_t sendFirstComputeRow_task(task_arg_t * args) {
