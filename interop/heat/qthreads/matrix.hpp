@@ -2,7 +2,7 @@
 #define MATRIX_HPP
 
 #ifndef BSX
-#define BSX 1024
+#define BSX 512
 #endif
 
 #ifndef BSY
@@ -14,6 +14,7 @@
 #define TOP (bx-1)*nby + by
 #define BOTTOM (bx+1)*nby + by
 #define CENTER bx*nby + by
+#define CENTER_ARGS bx*(nby-2) + by
 
 // Definition of types
 typedef double row_t[BSY];

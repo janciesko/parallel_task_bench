@@ -7,7 +7,7 @@ BINARY=$1
 TYPE=$2
 HOSTNAME=$3
 
-threads_init=12
+threads_init=48
 size_init=256
 steps=10
 
@@ -15,7 +15,7 @@ OMP_FLAGS="-x OMP_PROC_BIND=spread -x OMP_PLACES=cores"
 MPI_FLAGS="--bind-to none -x HCOLL_RCACHE=^ucs"
 #OMP_FLAGS=
 
-LIBGOMP_PATH="/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/gcc/install/lib64:/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/ompi/install/lib:/g/g92/ciesko1/lustre/RAndD/MPIContinuations/software/ucx/install/lib"
+LIBGOMP_PATH="/home/jciesko/RAndD/MPIContinuations/software/gcc/install_caraway/lib64/"
 
 if [ x"$TYPE" = x1x1 ];
 then
@@ -33,6 +33,7 @@ then
                 mpirun \
                 $MPI_FLAGS \
                 -x OMP_NUM_THREADS=$threads $OMP_FLAGS  \
+		-x LD_LIBRARY_PATH=$LIBGOMP_PATH:$LD_LIBARY_PATH \
                 -npernode $ranks -host $HOSTNAME \
                 -np $ranks $BINARY -s $size -t $steps  | tee -a ${BINARY}_$ranks_$TYPE.out
             done
