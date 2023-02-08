@@ -14,7 +14,7 @@
 #define TOP (bx-1)*nby + by
 #define BOTTOM (bx+1)*nby + by
 #define CENTER bx*nby + by
-#define CENTER_ARGS bx*(nby-2) + by
+#define CENTER_ARGS (bx-1)*(nby-2) + by - 1
 
 // Definition of types
 typedef double row_t[BSY];

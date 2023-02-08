@@ -13,22 +13,22 @@
 #include <heat.hpp>
 
 int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlockOffset) {
-	conf.matrix      = (block_t *)    malloc(rowBlocks * colBlocks * sizeof(block_t));
-	conf.args        = (task_arg_t *) malloc(rowBlocks * (colBlocks - 2) * sizeof(task_arg_t));
-		
+	conf.args_border = (task_arg_t *) malloc(4 * (colBlocks - 2) * sizeof(task_arg_t));
+	conf.matrix      = (block_t *) malloc(rowBlocks * colBlocks * sizeof(block_t));
+	conf.args        = (task_arg_t *) malloc((rowBlocks - 2) * (colBlocks - 2) * sizeof(task_arg_t));	
 	if (conf.matrix == NULL) {
 		fprintf(stderr, "Error: Memory cannot be allocated!\n");
 		exit(1);
 	}
-	
-	initializeMatrix(conf, conf.matrix, rowBlocks, colBlocks, rowBlockOffset);
-	
+	initializeMatrix(conf, conf.matrix, rowBlocks, colBlocks, rowBlockOffset);	
 	return 0;
 }
 
 int finalize(HeatConfiguration &conf) {
+	assert(conf.args_border != nullptr);
 	assert(conf.matrix != nullptr);
 	assert(conf.args != nullptr);
+	free(conf.args_border);
 	free(conf.matrix);
 	free(conf.args);
 	return 0;

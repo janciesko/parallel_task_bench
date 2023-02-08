@@ -118,8 +118,7 @@ inline void receiveLowerBorder(block_t *matrix, int nbx, int nby, int rank, int 
 			MPI_Request request;
 			debug("Receiving lower border from %d tag %d\n", rank+1, by);
 			MPI_Irecv(&matrix[(nbx-1)*nby + by][0], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
-		    MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
-			
+		    MPIX_Continue(&request, &release_event, (void *) event, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);	
 		}
 		#endif
 	}
