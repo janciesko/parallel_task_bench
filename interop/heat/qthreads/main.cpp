@@ -25,7 +25,12 @@ int main(int argc, char **argv)
 	
 	HeatConfiguration conf = readConfiguration(argc, argv);
 	refineConfiguration(conf, rank_size * BSX, BSY);
-	if (!rank) printConfiguration(conf);
+	
+	#ifdef BENCHOUTPUT
+	#else
+	if (!rank)
+	 printConfiguration(conf);
+	#endif
 	
 	conf.rowBlocks = conf.rows / BSX;
 	conf.colBlocks = conf.cols / BSY;
@@ -33,12 +38,12 @@ int main(int argc, char **argv)
 	int colBlocks = conf.colBlocks + 2;
 	int rowBlocksPerRank = conf.rowBlocks / rank_size + 2;
 	
-	int err = initialize(conf, rowBlocksPerRank, colBlocks, (rowBlocksPerRank - 2) * rank);
+	int err = initialize(conf, conf.timesteps, rowBlocksPerRank, colBlocks, (rowBlocksPerRank - 2) * rank);
 	assert(!err);
 	
 	// Solve the problem
 	double start = get_time();
-	solve(conf.matrix, conf.args, conf.args_border, rowBlocksPerRank, colBlocks, conf.timesteps);
+	solve(conf.matrix, conf.matrix_dep, conf.args, conf.args_border, rowBlocksPerRank, colBlocks, conf.timesteps);
 	double end = get_time();	
 	if (!rank) {
 		long totalElements = (long)conf.rows * (long)conf.cols;
@@ -46,11 +51,18 @@ int main(int argc, char **argv)
 		performance = performance / (end - start);
 		performance = performance / 1000000.0;
 		int threads = qthread_num_workers();
+		int num_tasks = conf.rowBlocks *  conf.colBlocks;
+		int num_borders = 2 * conf.rowBlocks + 2 * conf.colBlocks;
 		
+				#ifdef BENCHOUTPUT
+		fprintf(stdout, "%d, %d, %d, %d, %lld, %d, %d, %f, %f\n", rank_size, threads, num_tasks, num_borders,
+		 totalElements,totalElements * sizeof(double) / 1024/1024, conf.timesteps, end - start, performance);
+		#else
 		fprintf(stdout, "rows, %d, cols, %d, rows_per_rank, %d, total, %ld, total_per_rank, %ld, bs, %d"
 				", ranks, %d, threads, %d, timesteps, %d, time, %f, performance, %f\n",
 				conf.rows, conf.cols, conf.rows / rank_size, totalElements, totalElements / rank_size,
 				BSX, rank_size, threads, conf.timesteps, end - start, performance);
+		#endif
 	}
 	
 	if (conf.generateImage) {

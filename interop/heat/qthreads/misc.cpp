@@ -12,10 +12,24 @@
 #include <matrix.hpp>
 #include <heat.hpp>
 
-int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlockOffset) {
-	conf.args_border = (task_arg_t *) malloc(4 * (colBlocks - 2) * sizeof(task_arg_t));
+int initialize(HeatConfiguration &conf, int timesteps, int rowBlocks, int colBlocks, int rowBlockOffset) {
+	
 	conf.matrix      = (block_t *) malloc(rowBlocks * colBlocks * sizeof(block_t));
-	conf.args        = (task_arg_t *) malloc((rowBlocks - 2) * (colBlocks - 2) * sizeof(task_arg_t));	
+	#ifdef TASKWAIT	
+	conf.args_border = (task_arg_t **)  malloc (1 /*timestep*/ * sizeof(task_arg_t *));
+	conf.args_border[0] = (task_arg_t *) malloc(4 * (colBlocks - 2) * sizeof(task_arg_t));
+	conf.args        = (task_arg_t **)  malloc (1 /*timesteps*/ * sizeof(task_arg_t *));
+	conf.args[0]        = (task_arg_t *) malloc((rowBlocks - 2) * (colBlocks - 2) * sizeof(task_arg_t));	
+	#else
+	conf.args_border = (task_arg_t **)  malloc (timesteps * sizeof(task_arg_t *));
+	conf.args        = (task_arg_t **)  malloc (timesteps * sizeof(task_arg_t *));
+	conf.matrix_dep  = (aligned_t **) malloc (timesteps * sizeof(aligned_t *));
+	for(int i = 0; i < timesteps; ++i){
+		conf.args_border[i] = (task_arg_t *) malloc(4 * (colBlocks - 2) * sizeof(task_arg_t));
+		conf.args[i]        = (task_arg_t *) malloc((rowBlocks - 2) * (colBlocks - 2) * sizeof(task_arg_t));	
+		conf.matrix_dep[i]  = (aligned_t *)  malloc((rowBlocks - 2) * (colBlocks - 2) * sizeof(aligned_t));	
+	}
+	#endif
 	if (conf.matrix == NULL) {
 		fprintf(stderr, "Error: Memory cannot be allocated!\n");
 		exit(1);
@@ -28,9 +42,25 @@ int finalize(HeatConfiguration &conf) {
 	assert(conf.args_border != nullptr);
 	assert(conf.matrix != nullptr);
 	assert(conf.args != nullptr);
+	#ifdef TASKWAIT	
+	assert(conf.args_border[0] != nullptr);
+	assert(conf.args[0] != nullptr);
+	free(conf.args_border[0]);
+	free(conf.args[0]);
 	free(conf.args_border);
-	free(conf.matrix);
 	free(conf.args);
+	#else
+	assert(conf.matrix_dep != nullptr);
+	for(int i = 0; i < conf.timesteps; ++i) {
+		assert(conf.args_border[i] != nullptr);
+		assert(conf.args[i] != nullptr);
+		assert(conf.matrix_dep[i] != nullptr);
+		free(conf.args_border[i]);
+		free(conf.args[i]);
+		free(conf.matrix_dep[i]);
+	}
+	#endif
+	free(conf.matrix);
 	return 0;
 }
 

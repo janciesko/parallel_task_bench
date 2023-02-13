@@ -11,23 +11,23 @@ if [ x"$TYPE" = xheat_OpenMP ]; then
     #=========================================
     conf=1x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    bash ../scripts/run_OpenMP_smp.sh $bin $conf $HOSTNAME
     #=========================================
     conf=1x2
     echo "$bin $conf"
-    #bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=1x4
     echo "$bin $conf"
-    #bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=2x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=4x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
 fi
 
 if [ x"$TYPE" = xheat_OpenMP_TW ]; then
@@ -40,22 +40,22 @@ if [ x"$TYPE" = xheat_OpenMP_TW ]; then
     #=========================================
     conf=1x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    bash ../scripts/run_OpenMP_smp.sh $bin $conf $HOSTNAME
     #=========================================
     conf=1x2
     echo "$bin $conf"
-    #bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=1x4
     echo "$bin $conf"
-    #bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=2x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     conf=4x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
 fi
 
 if [ x"$TYPE" = xheat_OpenMP_BLOCKING ]; then
@@ -68,21 +68,60 @@ if [ x"$TYPE" = xheat_OpenMP_BLOCKING ]; then
     #=========================================
     conf=1x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=1x2
     echo "$bin $conf"
-    #bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=1x4
     echo "$bin $conf"
-    #bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    #bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=2x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
     #=========================================
     conf=4x1
     echo "$bin $conf"
-    bash ../scripts/run_2.sh $bin $conf $HOSTNAME
+    bash ../scripts/run_OpenMP.sh $bin $conf $HOSTNAME
+fi
+
+
+#============================================
+#============================================
+#============================================
+#============================================
+
+
+#!/bin/bash
+TYPE=$1
+HOSTNAME=$2
+if [ x"$TYPE" = xheat_Qthreads ]; then
+    #=========================================
+    #=========================================
+    #=========================================
+    bin=heat_Qthreads
+    #=========================================
+    #=========================================
+    #=========================================
+    conf=1x1
+    echo "$bin $conf"
+    bash ../scripts/run_Qthreads_smp.sh $bin $conf $HOSTNAME
+    #=========================================
+    conf=1x2
+    echo "$bin $conf"
+    #bash ../scripts/run_Qthreads.sh $bin $conf $HOSTNAME
+    #=========================================
+    conf=1x4
+    echo "$bin $conf"
+    #bash ../scripts/run_Qthreads.sh $bin $conf $HOSTNAME
+    #=========================================
+    conf=2x1
+    echo "$bin $conf"
+#    bash ../scripts/run_Qthreads.sh $bin $conf $HOSTNAME
+    #=========================================
+    conf=4x1
+    echo "$bin $conf"
+#    bash ../scripts/run_Qthreads.sh $bin $conf $HOSTNAME
 fi

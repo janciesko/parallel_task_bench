@@ -217,19 +217,25 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps) {
 	int rank, rank_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
-	MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
-	MPI_Start(&cont_req);
+	
 
     volatile int do_progress = 1; // whether to keep triggering progress
     volatile int in_compute  = 0; // whether the compute task has been launched
 
+	if(rank_size > 1){
+		MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
+		MPI_Start(&cont_req);
+	}
+
 	#pragma omp parallel
 	{
-	  #ifdef BLOCKINGMPI
-	 	// Do no use progres task
-	  #else
-	  polling_task(&do_progress, &in_compute);
-	  #endif
+	  if(rank_size > 1){
+			#ifdef BLOCKINGMPI
+				// Do no use progres task
+			#else
+			polling_task(&do_progress, &in_compute);
+			#endif
+	  }
 
 	  #pragma omp single
 	  #pragma omp task default(shared)
@@ -249,6 +255,10 @@ double solve(block_t *matrix, int rowBlocks, int colBlocks, int timesteps) {
 
 	}
 
-	MPI_Request_free(&cont_req);
+	if(rank_size > 1)
+	{
+		MPI_Request_free(&cont_req);
+	}
+
 	return 0.0;
 }

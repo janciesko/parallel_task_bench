@@ -38,9 +38,9 @@ struct HeatConfiguration {
 	int rowBlocks;
 	int colBlocks;
 	block_t *matrix;
-	aligned_t * matrix_dep;
-	task_arg_t * args;
-	task_arg_t * args_border;
+	task_arg_t ** args;
+	task_arg_t ** args_border;
+	aligned_t **matrix_dep;
 	int numHeatSources;
 	HeatSource *heatSources;
 	std::string confFileName;
@@ -61,7 +61,7 @@ struct HeatConfiguration {
 	}
 };
 
-int initialize(HeatConfiguration &conf, int rowBlocks, int colBlocks, int rowBlockOffset = 0);
+int initialize(HeatConfiguration &conf, int iterations, int rowBlocks, int colBlocks, int rowBlockOffset = 0);
 int finalize(HeatConfiguration &conf);
 int writeImage(std::string fileName, block_t *matrix, int rowBlocks, int colBlocks);
 HeatConfiguration readConfiguration(int argc, char **argv);
@@ -70,6 +70,6 @@ void printConfiguration(const HeatConfiguration &conf);
 void initializeMatrix(const HeatConfiguration &conf, block_t *matrix, int rowBlocks, int colBlocks, int rowBlockOffset = 0);
 double get_time();
 
-void solve(block_t *matrix, task_arg_t * args, task_arg_t * args_border,int rowBlocks, int colBlocks, int timesteps);
+void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args, task_arg_t ** args_border,int rowBlocks, int colBlocks, int timesteps);
 
 #endif // HEAT_HPP

@@ -2,19 +2,27 @@
 #define MATRIX_HPP
 
 #ifndef BSX
-#define BSX 512
+#define BSX 256
 #endif
 
 #ifndef BSY
 #define BSY BSX
 #endif
 
-#define LEFT bx*nby + (by-1)
-#define RIGHT bx*nby + (by+1)
-#define TOP (bx-1)*nby + by
-#define BOTTOM (bx+1)*nby + by
-#define CENTER bx*nby + by
+#define LEFT        bx*nby + (by-1)
+#define RIGHT       bx*nby + (by+1)
+#define TOP         (bx-1)*nby + by
+#define BOTTOM      (bx+1)*nby + by
+#define CENTER      bx*nby + by
 #define CENTER_ARGS (bx-1)*(nby-2) + by - 1
+#define CENTER_DEPS (bx-1)*(nby-2) + by - 1
+#define LEFT_DEPS   (bx-1)*(nby-2) + by - 2
+#define RIGHT_DEPS  (bx-1)*(nby-2) + by
+#define TOP_DEPS    (bx-2)*(nby-2) + by - 1
+#define BOTTOM_DEPS (bx)*(nby-2) + by - 1
+
+#include <qthread/qthread.h>
+#include <qthread/barrier.h>
 
 // Definition of types
 typedef double row_t[BSY];
@@ -22,12 +30,15 @@ typedef row_t block_t[BSX];
 
 typedef struct {
 	block_t * matrix;
+	aligned_t ** matrix_dep;
 	int bx;
 	int by;
 	int nbx;
 	int nby;
 	int rank;
 	int rank_size;
+	int iter;
+	int iters;
 } task_arg_t;
 
 template <typename Func>

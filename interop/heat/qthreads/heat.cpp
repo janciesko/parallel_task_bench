@@ -27,7 +27,10 @@ aligned_t solveBlock_task(task_arg_t * args) {
 	int by  = args->by;
 	int nbx = args->nbx;
 	int nby = args->nby;
+	int iter = args->iter;
+	int iters = args->iters;
 	block_t * matrix = args->matrix;
+	aligned_t ** matrix_dep = args->matrix_dep;
 
 	block_t &targetBlock       = matrix[CENTER];
 	const block_t &centerBlock = matrix[CENTER];
@@ -36,7 +39,7 @@ aligned_t solveBlock_task(task_arg_t * args) {
 	const block_t &rightBlock  = matrix[RIGHT];
 	const block_t &bottomBlock = matrix[BOTTOM];
 
-	debug("solveblock_task %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", bx, by, nbx, nby, &targetBlock, topBlock, bottomBlock, leftBlock, rightBlock);	
+	debug("solveblock_task %i, %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", iter, bx, by, nbx, nby, &targetBlock, topBlock, bottomBlock, leftBlock, rightBlock);	
 
 	double sum = 0.0;
 	for (int x = 0; x < BSX; ++x) {
@@ -53,20 +56,33 @@ aligned_t solveBlock_task(task_arg_t * args) {
 			targetBlock[x][y] = value;
 		}
 	}
-
+	
+	#ifdef TASKWAIT	
 	qthread_fill((aligned_t*)&matrix[CENTER]);
+	#else
+	qthread_fill((aligned_t*)&matrix_dep[iter][CENTER_DEPS]);
+	#endif 
 	if(rank == rank_size - 1) {
 		if(bx == args->nbx-2 && by == args->nby-2)
 		{		
+			#ifdef TASKWAIT	
 			qt_barrier_enter(barrier);
+			#else
+			if (iter == iters -1)
+				qt_barrier_enter(barrier);
+			#endif
 		}
 	}
 	return 0;
 }
 
-void solveBlock(block_t *matrix, task_arg_t * _args, int rank, int rank_size, int nbx, int nby, int bx, int by) {
+void solveBlock(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** _args, int iter, int iters, int rank, int rank_size, int nbx, int nby, int bx, int by) {
 	
-	task_arg_t &args = _args[CENTER_ARGS];
+	#ifdef TASKWAIT
+	task_arg_t &args = _args[0][CENTER_ARGS];
+	#else
+	task_arg_t &args = _args[iter][CENTER_ARGS];
+	#endif
 	args.bx=bx;
 	args.by=by;
 	args.nbx=nbx;
@@ -74,6 +90,9 @@ void solveBlock(block_t *matrix, task_arg_t * _args, int rank, int rank_size, in
 	args.rank = rank;
 	args.rank_size = rank_size;
 	args.matrix = matrix;
+	args.matrix_dep = matrix_dep;
+	args.iter = iter;
+	args.iters = iters;
 
 	int region = (bx == 1 && bx != nbx - 2) ? NORTH
 		: (bx == 1 && bx == nbx - 2) ? NORTHSOUTH 
@@ -83,7 +102,8 @@ void solveBlock(block_t *matrix, task_arg_t * _args, int rank, int rank_size, in
 	switch (region){
 		case (NORTH):
 		{
-			debug("solveblock_N %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", bx, by, nbx, nby, &matrix[CENTER], &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
+			debug("solveblock_N %i, %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", iter, bx, by, nbx, nby, &matrix[CENTER], &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);
+			#ifdef TASKWAIT	
 			qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
 				(void *) &args, 
 				NULL,
@@ -91,44 +111,119 @@ void solveBlock(block_t *matrix, task_arg_t * _args, int rank, int rank_size, in
 				(aligned_t*)&matrix[TOP],				
 				(aligned_t*)&matrix[LEFT]
 			);
+			#else
+			if(iter == 0)
+				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
+					(void *) &args, 
+					NULL,
+					2,
+					(aligned_t*)&matrix_dep[iter][TOP_DEPS],				
+					(aligned_t*)&matrix_dep[iter][LEFT_DEPS]);
+			else
+				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
+					(void *) &args, 
+					NULL,
+					3,
+					(aligned_t*)&matrix_dep[iter][TOP_DEPS],				
+					(aligned_t*)&matrix_dep[iter][LEFT_DEPS],
+					(aligned_t*)&matrix_dep[iter - 1][CENTER_DEPS]);
+			#endif
 			break;
 		}
 		case (SOUTH):
 		{
-			debug("solveblock_S %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", bx, by, nbx, nby, &matrix[CENTER], &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
+			debug("solveblock_S %i, %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", iter, bx, by, nbx, nby, &matrix[CENTER], &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
+			#ifdef TASKWAIT
 			qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
 				(void *) &args, 
 				NULL,
 				3,				
 				(aligned_t*)&matrix[TOP],
 				(aligned_t*)&matrix[LEFT],
-				(aligned_t*)&matrix[BOTTOM]
-			);
+				(aligned_t*)&matrix[BOTTOM]);
+			#else
+			if(iter == 0)
+				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
+					(void *) &args, 
+					NULL,
+					3,				
+					(aligned_t*)&matrix_dep[iter][TOP_DEPS],
+					(aligned_t*)&matrix_dep[iter][LEFT_DEPS],
+					(aligned_t*)&matrix_dep[iter][BOTTOM_DEPS]);				
+			else
+				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
+					(void *) &args, 
+					NULL,
+					4,				
+					(aligned_t*)&matrix_dep[iter][TOP_DEPS],
+					(aligned_t*)&matrix_dep[iter][LEFT_DEPS],
+					(aligned_t*)&matrix_dep[iter][BOTTOM_DEPS],
+					(aligned_t*)&matrix_dep[iter - 1][CENTER_DEPS]);
+			#endif
 			break;
 		}
 		case (NORTHSOUTH):
 		{
-			debug("solveblock_NS %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", bx, by, nbx, nby, &matrix[CENTER], &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
+			debug("solveblock_NS %i, %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", iter, bx, by, nbx, nby, &matrix[CENTER], &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
+			#ifdef TASKWAIT
 			qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
 				(void *) &args, 
-				NULL,
+				NULL,				
 				3,				
 				(aligned_t*)&matrix[TOP],
 				(aligned_t*)&matrix[LEFT],
-				(aligned_t*)&matrix[BOTTOM]
-			);
+				(aligned_t*)&matrix[BOTTOM]);
+			#else
+			if(iter == 0)
+				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
+					(void *) &args, 
+					NULL,
+					3,				
+					(aligned_t*)&matrix_dep[iter][TOP_DEPS],
+					(aligned_t*)&matrix_dep[iter][LEFT_DEPS],
+					(aligned_t*)&matrix_dep[iter][BOTTOM_DEPS]);
+			else
+			{
+				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task,
+				(void *) &args, 
+				NULL,
+				4,
+				(aligned_t*)&matrix_dep[iter][TOP_DEPS],
+				(aligned_t*)&matrix_dep[iter][LEFT_DEPS],
+				(aligned_t*)&matrix_dep[iter][BOTTOM_DEPS],
+				(aligned_t*)&matrix_dep[iter - 1][CENTER_DEPS]);
+			}
+			#endif
 			break;	
 		}
 		case (REGULAR):
 		{
-			debug("solveblock_R %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", bx, by, nbx, nby, &matrix[CENTER], &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
+			debug("solveblock_R %i, %i, %i, %i, %i, adr %p: %p, %p, %p, %p\n", iter, bx, by, nbx, nby, &matrix[CENTER], &matrix[TOP],  &matrix[BOTTOM], &matrix[LEFT], &matrix[RIGHT]);	
+			#ifdef TASKWAIT
 			qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
 				(void *) &args, 
 				NULL,
 				2,
 				(aligned_t*)&matrix[TOP],
-				(aligned_t*)&matrix[LEFT]
-			);
+				(aligned_t*)&matrix[LEFT]);
+				
+			#else
+			if(iter == 0)
+				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
+					(void *) &args, 
+					NULL,
+					2,
+					(aligned_t*)&matrix_dep[iter][TOP_DEPS],
+					(aligned_t*)&matrix_dep[iter][LEFT_DEPS]);
+			else
+				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
+					(void *) &args, 
+					NULL,
+					3,
+					(aligned_t*)&matrix_dep[iter][TOP_DEPS],
+					(aligned_t*)&matrix_dep[iter][LEFT_DEPS],
+					(aligned_t*)&matrix_dep[iter - 1][CENTER_DEPS]);
+			#endif
 			break;	
 		}
 		default:
@@ -166,9 +261,9 @@ aligned_t sendFirstComputeRow_task(task_arg_t * args) {
 	return 0;
 }
 
-inline void sendFirstComputeRow(block_t *matrix, task_arg_t * _args, int nbx, int nby, int rank, int rank_size) {
+inline void sendFirstComputeRow(block_t *matrix, task_arg_t ** _args, int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {	
-		task_arg_t &args = _args[0 * (nby - 2) + by - 1];
+		task_arg_t &args = _args[0][0 * (nby - 2) + by - 1];
 		args.by=by;
 		args.nby=nby;
 		args.rank = rank;
@@ -191,9 +286,9 @@ aligned_t sendLastComputeRow_task(task_arg_t * args) {
 	return 0;
 }
 
-inline void sendLastComputeRow(block_t *matrix, task_arg_t * _args, int nbx, int nby, int rank, int rank_size) {
+inline void sendLastComputeRow(block_t *matrix, task_arg_t ** _args, int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {	
-		task_arg_t &args = _args[0 * (nby - 2) + by - 1];
+		task_arg_t &args = _args[0][0 * (nby - 2) + by - 1];
 		args.by=by;
 		args.rank = rank;
 		args.matrix = &matrix[(nbx-2)*nby + by];
@@ -218,9 +313,9 @@ aligned_t receiveUpperBorder_task(task_arg_t * args) {
 	return 0;
 }
 
-inline void receiveUpperBorder(block_t *matrix, task_arg_t * _args, int nbx, int nby, int rank, int rank_size) {
+inline void receiveUpperBorder(block_t *matrix, task_arg_t ** _args, int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {	
-		task_arg_t &args = _args[2 * (nby - 2) + by - 1];
+		task_arg_t &args = _args[0][2 * (nby - 2) + by - 1];
 		args.by = by;
 		args.rank = rank;
 		args.matrix = &matrix[by];
@@ -243,9 +338,9 @@ aligned_t receiveLowerBorder_task(task_arg_t * args) {
 	return 0;
 }
 
-inline void receiveLowerBorder(block_t *matrix, task_arg_t * _args,  int nbx, int nby, int rank, int rank_size) {
+inline void receiveLowerBorder(block_t *matrix, task_arg_t ** _args,  int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {	
-		task_arg_t &args = _args[3 * (nby - 2) + by - 1];
+		task_arg_t &args = _args[0][3 * (nby - 2) + by - 1];
 		args.by = by;
 		args.rank = rank;
 		args.matrix = &matrix[(nbx-1)*nby + by];
@@ -255,8 +350,9 @@ inline void receiveLowerBorder(block_t *matrix, task_arg_t * _args,  int nbx, in
 	}
 }
 
-inline void resetFEBs( block_t * matrix, int rank, int num_ranks, int nbx, int nby )
+inline void resetFEBs( block_t * matrix, aligned_t ** matrix_dep, int iter, int iters, int rank, int num_ranks, int nbx, int nby )
 {
+	#ifdef TASKWAIT	
 	//Fill northern and southern blocks if num_ranks == 1
 	if(num_ranks <=1 )
 	{
@@ -310,11 +406,52 @@ inline void resetFEBs( block_t * matrix, int rank, int num_ranks, int nbx, int n
 		qthread_fill((aligned_t*)&matrix[bx * nby + 0]);
 		qthread_fill((aligned_t*)&matrix[bx * nby + (nby-1)]);
 	}
+
+	//Empty inner blocks
+	for (int bx = 1; bx < nbx - 1; ++bx) {
+		for (int by = 1; by < nby-1; ++by) {
+			qthread_empty((aligned_t*)&matrix[bx* nby + by]);
+		}
+	}
+	#else
+	if(iter==0)
+	{
+		//Fill northern and southern blocks if num_ranks == 1
+		int bx = 0;
+		for (int by = 0; by < nby-2; ++by) {
+			for(int dep = 0; dep < iters; ++dep)
+				qthread_fill((aligned_t*)&matrix_dep[dep][bx * (nby-2) + by]);
+		}
+		bx = nbx-2;
+		for (int by = 0; by < nby-2; ++by) {
+			for(int dep = 0; dep < iters; ++dep)
+				qthread_fill((aligned_t*)&matrix_dep[dep][bx * (nby-2) + by]);
+		}
+	
+		//Fill east and west block columns
+		for(int dep = 0; dep < iters; ++dep) {
+			for (int bx = 0; bx < nbx-2; ++bx) {
+				qthread_fill((aligned_t*)&matrix_dep[dep][bx * (nby-2) + 0]);
+				qthread_fill((aligned_t*)&matrix_dep[dep][bx * (nby-2) + (nby-2)]);
+			}
+		}
+
+		//Empty inner blocks
+		for(int dep = 0; dep < iters; ++dep) {
+			for (int bx = 0; bx < nbx-2; ++bx) {
+				for (int by = 0; by < nby-2; ++by) {
+					qthread_empty((aligned_t*)&matrix_dep[dep][bx * (nby-2) + by]);
+				}
+			}
+		}
+	}
+	
+	#endif
 }
 
-inline void solveGaussSeidel(block_t *matrix, task_arg_t * args, task_arg_t * args_border, int nbx, int nby, int rank, int rank_size) {	
+inline void solveGaussSeidel(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args, int iter, int iters, task_arg_t ** args_border, int nbx, int nby, int rank, int rank_size) {	
 	
-	resetFEBs(matrix, rank, rank_size, nbx, nby);
+	resetFEBs(matrix, matrix_dep, iter, iters, rank, rank_size, nbx, nby);
 
 	if (rank != 0) {
 		sendFirstComputeRow(matrix, args_border, nbx, nby, rank, rank_size);
@@ -325,7 +462,7 @@ inline void solveGaussSeidel(block_t *matrix, task_arg_t * args, task_arg_t * ar
 	}
 	for (int bx = 1; bx < nbx-1; ++bx) {
 		for (int by = 1; by < nby-1; ++by) {
-			solveBlock(matrix, args, rank, rank_size, nbx, nby, bx, by);
+			solveBlock(matrix, matrix_dep, args, iter, iters, rank, rank_size, nbx, nby, bx, by);
 		}
 	}
 
@@ -333,9 +470,18 @@ inline void solveGaussSeidel(block_t *matrix, task_arg_t * args, task_arg_t * ar
 		sendLastComputeRow(matrix, args_border, nbx, nby, rank, rank_size);
 	}	
 
+	
+	#ifdef TASKWAIT
 	debug("PRE_BARRIER 2\n");
 	qt_barrier_enter(barrier);
 	debug("POST_BARRIER 2\n");
+	#else
+	if(iter == iters -1){
+		debug("PRE_BARRIER 2\n");
+		qt_barrier_enter(barrier);
+		debug("POST_BARRIER 2\n");
+	}
+	#endif
 }
 
 aligned_t progress_task(void * args)
@@ -353,7 +499,7 @@ aligned_t progress_task(void * args)
 	return 0;
 }
 
-void solve(block_t *matrix, task_arg_t * args, task_arg_t * args_border, int rowBlocks, int colBlocks, int timesteps) {
+void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args,  task_arg_t ** args_border, int rowBlocks, int colBlocks, int timesteps) {
 	int rank, rank_size;
 	aligned_t ret;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -371,7 +517,7 @@ void solve(block_t *matrix, task_arg_t * args, task_arg_t * args_border, int row
 	} 
 
 	for (int t = 0; t < timesteps; ++t) {
-		solveGaussSeidel(matrix, args, args_border, rowBlocks, colBlocks, rank, rank_size);
+		solveGaussSeidel(matrix, matrix_dep, args, t, timesteps, args_border, rowBlocks, colBlocks, rank, rank_size);
 	}
 
 	qt_barrier_destroy(barrier);
