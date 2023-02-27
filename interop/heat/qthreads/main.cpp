@@ -17,7 +17,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	
+	#ifdef DEBUG
 	QCHECK(qthread_initialize());
+	#else
+	qthread_initialize();
+	#endif
 
 	int rank, rank_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);

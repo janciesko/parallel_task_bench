@@ -123,10 +123,11 @@ void solveBlock(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** _args, i
 				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
 					(void *) &args, 
 					NULL,
-					3,
+					4,
 					(aligned_t*)&matrix_dep[iter][TOP_DEPS],				
 					(aligned_t*)&matrix_dep[iter][LEFT_DEPS],
-					(aligned_t*)&matrix_dep[iter - 1][CENTER_DEPS]);
+					(aligned_t*)&matrix_dep[iter - 1][CENTER_DEPS], 
+					(aligned_t*)&matrix_dep[iter - 1][BOTTOM_DEPS]);
 			#endif
 			break;
 		}
@@ -219,10 +220,11 @@ void solveBlock(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** _args, i
 				qthread_fork_precond((aligned_t(*)(void*))&solveBlock_task, 
 					(void *) &args, 
 					NULL,
-					3,
+					4,
 					(aligned_t*)&matrix_dep[iter][TOP_DEPS],
 					(aligned_t*)&matrix_dep[iter][LEFT_DEPS],
-					(aligned_t*)&matrix_dep[iter - 1][CENTER_DEPS]);
+					(aligned_t*)&matrix_dep[iter - 1][CENTER_DEPS],
+					(aligned_t*)&matrix_dep[iter - 1][BOTTOM_DEPS]);
 			#endif
 			break;	
 		}
@@ -512,7 +514,11 @@ void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args,  task_a
 	{
 		MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
 		MPI_Start(&cont_req);
+		#ifdef DEBUG
 		QCHECK(qthread_fork(progress_task, NULL, &ret));
+		#else
+		qthread_fork(progress_task, NULL, &ret);
+		#endif
 		do_progress = 1; // whether to keep triggering progress
 	} 
 
@@ -525,7 +531,11 @@ void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args,  task_a
 	if(rank_size > 1)
 	{
 		do_progress = 0;
+		#ifdef DEBUG
 		QCHECK(qthread_readFF(NULL, &ret));
+		#else
+		qthread_readFF(NULL, &ret);
+		#endif
 		MPI_Request_free(&cont_req);
 	}
 }

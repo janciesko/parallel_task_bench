@@ -9,7 +9,7 @@ HOSTNAME=$3
 
 threads_init=1
 size_init=256
-steps=6
+steps=10
 
 OMP_FLAGS="-x OMP_PROC_BIND=spread -x OMP_PLACES=cores"
 MPI_FLAGS="--bind-to none -x HCOLL_RCACHE=^ucs"
