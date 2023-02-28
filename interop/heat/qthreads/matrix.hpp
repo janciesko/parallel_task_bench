@@ -2,7 +2,7 @@
 #define MATRIX_HPP
 
 #ifndef BSX
-#define BSX 256
+#define BSX 8
 #endif
 
 #ifndef BSY
@@ -15,11 +15,6 @@
 #define BOTTOM      (bx+1)*nby + by
 #define CENTER      bx*nby + by
 #define CENTER_ARGS (bx-1)*(nby-2) + by - 1
-#define CENTER_DEPS (bx-1)*(nby-2) + by - 1
-#define LEFT_DEPS   (bx-1)*(nby-2) + by - 2
-#define RIGHT_DEPS  (bx-1)*(nby-2) + by
-#define TOP_DEPS    (bx-2)*(nby-2) + by - 1
-#define BOTTOM_DEPS (bx)*(nby-2) + by - 1
 
 #include <qthread/qthread.h>
 #include <qthread/barrier.h>

@@ -27,7 +27,7 @@ int initialize(HeatConfiguration &conf, int timesteps, int rowBlocks, int colBlo
 	for(int i = 0; i < timesteps; ++i){
 		conf.args_border[i] = (task_arg_t *) malloc(4 * (colBlocks - 2) * sizeof(task_arg_t));
 		conf.args[i]        = (task_arg_t *) malloc((rowBlocks - 2) * (colBlocks - 2) * sizeof(task_arg_t));	
-		conf.matrix_dep[i]  = (aligned_t *)  malloc((rowBlocks - 2) * (colBlocks - 2) * sizeof(aligned_t));	
+		conf.matrix_dep[i]  = (aligned_t *)  malloc((rowBlocks) * (colBlocks) * sizeof(aligned_t));	
 	}
 	#endif
 	if (conf.matrix == NULL) {
