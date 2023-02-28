@@ -62,22 +62,20 @@ aligned_t solveBlock_task(task_arg_t * args) {
 	#else
 	qthread_fill((aligned_t*)&matrix_dep[iter][CENTER]);
 	#endif 
-	if(rank == rank_size - 1) {
-		if(bx == args->nbx-2 && by == args->nby-2)
-		{		
-			#ifdef TASKWAIT	
+
+	if(bx == args->nbx-2 && by == args->nby-2)
+	{		
+		#ifdef TASKWAIT	
+		qt_barrier_enter(barrier);
+		#else
+		if (iter == iters -1)
 			qt_barrier_enter(barrier);
-			#else
-			if (iter == iters -1)
-				qt_barrier_enter(barrier);
-			#endif
-		}
+		#endif
 	}
 	return 0;
 }
 
 void solveBlock(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** _args, int iter, int iters, int rank, int rank_size, int nbx, int nby, int bx, int by) {
-	
 	#ifdef TASKWAIT
 	task_arg_t &args = _args[0][CENTER_ARGS];
 	#else
@@ -356,7 +354,7 @@ inline void resetFEBs( block_t * matrix, aligned_t ** matrix_dep, int iter, int 
 {
 	#ifdef TASKWAIT	
 	//Fill northern and southern blocks if num_ranks == 1
-	if(num_ranks <=1 )
+	if(num_ranks == 1)
 	{
 		int bx = 0;
 		for (int by = 1; by < nby-1; ++by) {
@@ -495,7 +493,7 @@ void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args,  task_a
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &rank_size);
 
-	barrier = (rank == rank_size -1 )?qt_barrier_create(2, REGION_BARRIER) :
+	barrier = ( rank_size == 1 )?qt_barrier_create(2, REGION_BARRIER) :
 			 qt_barrier_create(colBlocks-2 + 1, REGION_BARRIER);
 
 	if(rank_size > 1)
@@ -526,4 +524,6 @@ void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args,  task_a
 		#endif
 		MPI_Request_free(&cont_req);
 	}
+
+	MPI_Barrier(MPI_COMM_WORLD);
 }
