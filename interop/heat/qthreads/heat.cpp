@@ -250,7 +250,7 @@ aligned_t sendFirstComputeRow_task(task_arg_t * args) {
 	/* Unpack task data */
 	int by   = args->by;
 	int rank = args->rank;
-	block_t * matrix = args->matrix;
+	block_t & matrix = * args->matrix;
 
 	MPI_Request request;
 	debug("Sending first compute row to %d tag %d adr %p args %p\n", rank-1, by, matrix, args);
@@ -277,10 +277,11 @@ aligned_t sendLastComputeRow_task(task_arg_t * args) {
 	/* Unpack task data */
 	int by   = args->by;
 	int rank = args->rank;
-	block_t * matrix = args->matrix;
+	block_t & matrix = * args->matrix;
 
 	MPI_Request request;
 	debug("Sending last compute row to %d tag %d\n", rank+1, by);
+
 	MPI_Isend(&matrix[BSX-1], BSY, MPI_DOUBLE, rank + 1, by, MPI_COMM_WORLD, &request);
 	MPIX_Continue(&request, &release_event_barrier, (void *) matrix, MPIX_CONT_REQBUF_VOLATILE, MPI_STATUS_IGNORE, cont_req);
 	return 0;
@@ -288,10 +289,11 @@ aligned_t sendLastComputeRow_task(task_arg_t * args) {
 
 inline void sendLastComputeRow(block_t *matrix, task_arg_t ** _args, int nbx, int nby, int rank, int rank_size) {
 	for (int by = 1; by < nby-1; ++by) {	
-		task_arg_t &args = _args[0][0 * (nby - 2) + by - 1];
+		task_arg_t &args = _args[0][1 * (nby - 2) + by - 1];
 		args.by=by;
 		args.rank = rank;
 		args.matrix = &matrix[(nbx-2)*nby + by];
+	
 		qthread_fork_precond((aligned_t(*)(void*))&sendLastComputeRow_task, 
 			(void *) &args, 
 			NULL,
@@ -304,7 +306,7 @@ aligned_t receiveUpperBorder_task(task_arg_t * args) {
 	/* Unpack task data */
 	int by = args->by;
 	int rank = args->rank;
-	block_t * matrix = args->matrix;
+	block_t & matrix = * args->matrix;
 
 	MPI_Request request;
 	debug("Receiving upper border from %d tag %d adr %p args %p\n", rank-1, by, matrix, args);
@@ -329,7 +331,7 @@ aligned_t receiveLowerBorder_task(task_arg_t * args) {
 	/* Unpack task data */
 	int by   = args->by;
 	int rank = args->rank;
-	block_t * matrix = args->matrix;
+	block_t & matrix = * args->matrix;
 
 	MPI_Request request;
 	debug("Receiving lower border from %d tag %d adr %p\n", rank+1, by, matrix);
@@ -498,6 +500,7 @@ void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args,  task_a
 
 	if(rank_size > 1)
 	{
+
 		MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
 		MPI_Start(&cont_req);
 		#ifdef DEBUG
@@ -505,7 +508,7 @@ void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args,  task_a
 		#else
 		qthread_fork(progress_task, NULL, &ret);
 		#endif
-		do_progress = 1; // whether to keep triggering progress
+		do_progress = 1; // whether to keep alive progress task
 	} 
 
 	for (int t = 0; t < timesteps; ++t) {
@@ -516,7 +519,7 @@ void solve(block_t *matrix, aligned_t ** matrix_dep, task_arg_t ** args,  task_a
 
 	if(rank_size > 1)
 	{
-		do_progress = 0;
+		do_progress = 0; // terminate progress task
 		#ifdef DEBUG
 		QCHECK(qthread_readFF(NULL, &ret));
 		#else
